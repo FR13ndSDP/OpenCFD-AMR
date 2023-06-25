@@ -280,14 +280,6 @@ EBR::post_timestep (int iteration)
 void
 EBR::postCoarseTimeStep (Real time)
 {
-    // sync up statedata time
-    for (int lev = 0; lev <= parent->finestLevel(); ++lev) {
-        EBR& this_level = getLevel(lev);
-        for (int i = 0; i < this_level.state.size(); ++i) {
-            this_level.state[i].syncNewTimeLevel(time);
-        }
-    }
-
     // This only computes sum on level 0
     if (verbose >= 2) {
         printTotal();
