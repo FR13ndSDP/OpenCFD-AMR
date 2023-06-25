@@ -98,7 +98,6 @@ void ebr_derpres (const Box& bx, FArrayBox& pfab, int dcomp, int ncomp,
                   Real /*time*/, const int* /*bcrec*/, int /*level*/)
 {
     amrex::ignore_unused(ncomp);
-    AMREX_ASSERT(ncomp == AMREX_SPACEDIM);
     auto const dat = datfab.array();
     auto       p    = pfab.array();
     Parm const* parm = EBR::d_parm;
