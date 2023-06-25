@@ -280,6 +280,7 @@ EBR::post_timestep (int iteration)
 void
 EBR::postCoarseTimeStep (Real time)
 {
+    // post coarse timestep synctime not needed
     // This only computes sum on level 0
     if (verbose >= 2) {
         printTotal();
