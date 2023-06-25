@@ -231,10 +231,10 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     int cdir = 0;
                     const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    launch(xflxbx,
-                    [=] AMREX_GPU_DEVICE (const Box& tbox) noexcept
+                    ParallelFor<NUM_THREADS>(xflxbx, NPRIM,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
-                        reconstruction_x(tbox,ql,qr,q,*lparm);
+                        reconstruction_x(i,j,k,n,ql,qr,q,*lparm);
                     });
 
                     ParallelFor<NUM_THREADS>(xflxbx,
@@ -255,10 +255,10 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     cdir = 1;
                     const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    launch(yflxbx,
-                    [=] AMREX_GPU_DEVICE (const Box& tbox) noexcept
+                    ParallelFor<NUM_THREADS>(yflxbx, NPRIM,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
-                        reconstruction_y(tbox,ql,qr,q, *lparm);
+                        reconstruction_y(i,j,k,n,ql,qr,q,*lparm);
                     });
 
                     ParallelFor<NUM_THREADS>(yflxbx,
@@ -279,10 +279,10 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     cdir = 2;
                     const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    launch(zflxbx,
-                    [=] AMREX_GPU_DEVICE (const Box& tbox) noexcept
+                    ParallelFor<NUM_THREADS>(zflxbx, NPRIM,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
-                        reconstruction_z(tbox,ql,qr,q, *lparm);
+                        reconstruction_z(i,j,k,n,ql,qr,q,*lparm);
                     });
 
                     ParallelFor<NUM_THREADS>(zflxbx,

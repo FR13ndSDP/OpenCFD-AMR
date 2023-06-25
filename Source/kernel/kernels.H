@@ -106,316 +106,268 @@ minmod(amrex::Real const a, amrex::Real const b)
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
-reconstruction_x (amrex::Box const& bx,
+reconstruction_x (int i, int j, int k, int n,
              amrex::Array4<amrex::Real> const& ql,
              amrex::Array4<amrex::Real> const& qr,
              amrex::Array4<amrex::Real const> const& q,
              Parm const& parm) noexcept
 {
     using amrex::Real;
+    Real V1 = q(i-3,j,k,n);
+    Real V2 = q(i-2,j,k,n);
+    Real V3 = q(i-1,j,k,n);
+    Real V4 = q(i,j,k,n);
+    Real V5 = q(i+1,j,k,n);
+    Real V6 = q(i+2,j,k,n);
 
-    const auto lo = amrex::lbound(bx);
-    const auto hi = amrex::ubound(bx);
+    // qL
+    Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
+    Real s22 = 13.0*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 3.0*(V2-V4)*(V2-V4);
+    Real s33 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(3.0*V3-4.0*V4+V5)*(3.0*V3-4.0*V4+V5);
 
-    for (int n = 0; n < NPRIM; ++n) {
-        for (int k = lo.z; k<= hi.z; ++k) {
-            for (int j = lo.y; j <= hi.y; ++j) {
-                for (int i = lo.x; i <= hi.x; ++i) {
-                    Real V1 = q(i-3,j,k,n);
-                    Real V2 = q(i-2,j,k,n);
-                    Real V3 = q(i-1,j,k,n);
-                    Real V4 = q(i,j,k,n);
-                    Real V5 = q(i+1,j,k,n);
-                    Real V6 = q(i+2,j,k,n);
+    Real s55 = amrex::Math::abs(s11-s33);
 
-                    // qL
-                    Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
-                    Real s22 = 13.0*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 3.0*(V2-V4)*(V2-V4);
-                    Real s33 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(3.0*V3-4.0*V4+V5)*(3.0*V3-4.0*V4+V5);
+    // get rid of pow here, calculate (1+x)^6
+    Real a1 = 1.0+s55/(s11+parm.eps);
+    Real a2 = 1.0+s55/(s22+parm.eps);
+    Real a3 = 1.0+s55/(s33+parm.eps);
+    a1 = a1*a1*a1*a1*a1*a1;
+    a2 = a2*a2*a2*a2*a2*a2;
+    a3 = a3*a3*a3*a3*a3*a3;
 
-                    Real s55 = amrex::Math::abs(s11-s33);
-
-                    // get rid of pow here, calculate (1+x)^6
-                    Real a1 = 1.0+s55/(s11+parm.eps);
-                    Real a2 = 1.0+s55/(s22+parm.eps);
-                    Real a3 = 1.0+s55/(s33+parm.eps);
-                    a1 = a1*a1*a1*a1*a1*a1;
-                    a2 = a2*a2*a2*a2*a2*a2;
-                    a3 = a3*a3*a3*a3*a3*a3;
-
-                    Real invsum = 1.0/(a1+a2+a3);
-                    Real b1 = a1*invsum;
-                    Real b2 = a2*invsum;
-                    Real b3 = a3*invsum;
+    Real invsum = 1.0/(a1+a2+a3);
+    Real b1 = a1*invsum;
+    Real b2 = a2*invsum;
+    Real b3 = a3*invsum;
 
 
-                    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
-                    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
-                    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
+    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
+    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
+    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
 
-                    Real v1 = parm.oneSix*(2.0*V1-7.0*V2+5.0*V3);
-                    Real v2 = parm.oneSix*(-V2-V3+2.0*V4);
-                    Real v3 = parm.oneSix*(-4.0*V3+5.0*V4-V5);
+    Real v1 = parm.oneSix*(2.0*V1-7.0*V2+5.0*V3);
+    Real v2 = parm.oneSix*(-V2-V3+2.0*V4);
+    Real v3 = parm.oneSix*(-4.0*V3+5.0*V4-V5);
 
-                    invsum = 1.0/(a1+a2+a3);
-                    Real w1 = a1*invsum;
-                    Real w2 = a2*invsum;
-                    Real w3 = a3*invsum;
+    invsum = 1.0/(a1+a2+a3);
+    Real w1 = a1*invsum;
+    Real w2 = a2*invsum;
+    Real w3 = a3*invsum;
 
-                    ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
+    ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
 
-                    // qR
-                    s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
-                    s22 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(V5-V3)*(V5-V3);
-                    s33 = 13.0*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 3.0*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
+    // qR
+    s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
+    s22 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(V5-V3)*(V5-V3);
+    s33 = 13.0*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 3.0*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
 
-                    s55 = amrex::Math::abs(s11-s33);
+    s55 = amrex::Math::abs(s11-s33);
 
-                    // get rid of pow here, calculate (1+x)^6
-                    a1 = 1.0+s55/(s11+parm.eps);
-                    a2 = 1.0+s55/(s22+parm.eps);
-                    a3 = 1.0+s55/(s33+parm.eps);
-                    a1 = a1*a1*a1*a1*a1*a1;
-                    a2 = a2*a2*a2*a2*a2*a2;
-                    a3 = a3*a3*a3*a3*a3*a3;
+    // get rid of pow here, calculate (1+x)^6
+    a1 = 1.0+s55/(s11+parm.eps);
+    a2 = 1.0+s55/(s22+parm.eps);
+    a3 = 1.0+s55/(s33+parm.eps);
+    a1 = a1*a1*a1*a1*a1*a1;
+    a2 = a2*a2*a2*a2*a2*a2;
+    a3 = a3*a3*a3*a3*a3*a3;
 
-                    invsum = 1.0/(a1+a2+a3);
-                    b1 = a1*invsum;
-                    b2 = a2*invsum;
-                    b3 = a3*invsum;
+    invsum = 1.0/(a1+a2+a3);
+    b1 = a1*invsum;
+    b2 = a2*invsum;
+    b3 = a3*invsum;
 
-                    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
-                    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
-                    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
+    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
+    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
+    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
 
-                    v1 = parm.oneSix*(2.0*V6-7.0*V5+5.0*V4);
-                    v2 = parm.oneSix*(-V5-V4+2.0*V3);
-                    v3 = parm.oneSix*(-4.0*V4+5.0*V3-V2);
+    v1 = parm.oneSix*(2.0*V6-7.0*V5+5.0*V4);
+    v2 = parm.oneSix*(-V5-V4+2.0*V3);
+    v3 = parm.oneSix*(-4.0*V4+5.0*V3-V2);
 
-                    invsum = 1.0/(a1+a2+a3);
-                    w1 = a1*invsum;
-                    w2 = a2*invsum;
-                    w3 = a3*invsum;
+    invsum = 1.0/(a1+a2+a3);
+    w1 = a1*invsum;
+    w2 = a2*invsum;
+    w3 = a3*invsum;
 
-                    qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
-                }
-            }
-        }
-    }
+    qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
-reconstruction_y (amrex::Box const& bx,
+reconstruction_y (int i, int j, int k, int n,
              amrex::Array4<amrex::Real> const& ql,
              amrex::Array4<amrex::Real> const& qr,
              amrex::Array4<amrex::Real const> const& q,
              Parm const& parm) noexcept
 {
     using amrex::Real;
-    const auto lo = amrex::lbound(bx);
-    const auto hi = amrex::ubound(bx);
+    Real V1 = q(i,j-3,k,n);
+    Real V2 = q(i,j-2,k,n);
+    Real V3 = q(i,j-1,k,n);
+    Real V4 = q(i,j,k,n);
+    Real V5 = q(i,j+1,k,n);
+    Real V6 = q(i,j+2,k,n);
 
-    for (int n = 0; n < NPRIM; ++n) {
-        for (int k = lo.z; k<= hi.z; ++k) {
-            for (int j = lo.y; j <= hi.y; ++j) {
-                for (int i = lo.x; i <= hi.x; ++i) {
-                    Real V1 = q(i,j-3,k,n);
-                    Real V2 = q(i,j-2,k,n);
-                    Real V3 = q(i,j-1,k,n);
-                    Real V4 = q(i,j,k,n);
-                    Real V5 = q(i,j+1,k,n);
-                    Real V6 = q(i,j+2,k,n);
+    // qL
+    Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
+    Real s22 = 13.0*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 3.0*(V2-V4)*(V2-V4);
+    Real s33 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(3.0*V3-4.0*V4+V5)*(3.0*V3-4.0*V4+V5);
 
-                    // qL
-                    Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
-                    Real s22 = 13.0*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 3.0*(V2-V4)*(V2-V4);
-                    Real s33 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(3.0*V3-4.0*V4+V5)*(3.0*V3-4.0*V4+V5);
+    Real s55 = amrex::Math::abs(s11-s33);
 
-                    Real s55 = amrex::Math::abs(s11-s33);
+    // get rid of pow here, calculate (1+x)^6
+    Real a1 = 1.0+s55/(s11+parm.eps);
+    Real a2 = 1.0+s55/(s22+parm.eps);
+    Real a3 = 1.0+s55/(s33+parm.eps);
+    a1 = a1*a1*a1*a1*a1*a1;
+    a2 = a2*a2*a2*a2*a2*a2;
+    a3 = a3*a3*a3*a3*a3*a3;
 
-                    // get rid of pow here, calculate (1+x)^6
-                    Real a1 = 1.0+s55/(s11+parm.eps);
-                    Real a2 = 1.0+s55/(s22+parm.eps);
-                    Real a3 = 1.0+s55/(s33+parm.eps);
-                    a1 = a1*a1*a1*a1*a1*a1;
-                    a2 = a2*a2*a2*a2*a2*a2;
-                    a3 = a3*a3*a3*a3*a3*a3;
+    Real invsum = 1.0/(a1+a2+a3);
+    Real b1 = a1*invsum;
+    Real b2 = a2*invsum;
+    Real b3 = a3*invsum;
 
-                    Real invsum = 1.0/(a1+a2+a3);
-                    Real b1 = a1*invsum;
-                    Real b2 = a2*invsum;
-                    Real b3 = a3*invsum;
 
-                    b1 = amrex::max(b1-1.e-5, 0.0)/(b1-1.e-5);
-                    b2 = amrex::max(b2-1.e-5, 0.0)/(b2-1.e-5);
-                    b3 = amrex::max(b3-1.e-5, 0.0)/(b3-1.e-5);
+    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
+    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
+    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
 
-                    Real v1 = parm.oneSix*(2.0*V1-7.0*V2+5.0*V3);
-                    Real v2 = parm.oneSix*(-V2-V3+2.0*V4);
-                    Real v3 = parm.oneSix*(-4.0*V3+5.0*V4-V5);
+    Real v1 = parm.oneSix*(2.0*V1-7.0*V2+5.0*V3);
+    Real v2 = parm.oneSix*(-V2-V3+2.0*V4);
+    Real v3 = parm.oneSix*(-4.0*V3+5.0*V4-V5);
 
-                    a1 = 0.10*b1;
-                    a2 = 0.60*b2;
-                    a3 = 0.30*b3;
+    invsum = 1.0/(a1+a2+a3);
+    Real w1 = a1*invsum;
+    Real w2 = a2*invsum;
+    Real w3 = a3*invsum;
 
-                    invsum = 1.0/(a1+a2+a3);
-                    Real w1 = a1*invsum;
-                    Real w2 = a2*invsum;
-                    Real w3 = a3*invsum;
+    ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
 
-                    ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
+    // qR
+    s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
+    s22 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(V5-V3)*(V5-V3);
+    s33 = 13.0*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 3.0*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
 
-                    // qR
-                    s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
-                    s22 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(V5-V3)*(V5-V3);
-                    s33 = 13.0*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 3.0*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
+    s55 = amrex::Math::abs(s11-s33);
 
-                    s55 = amrex::Math::abs(s11-s33);
+    // get rid of pow here, calculate (1+x)^6
+    a1 = 1.0+s55/(s11+parm.eps);
+    a2 = 1.0+s55/(s22+parm.eps);
+    a3 = 1.0+s55/(s33+parm.eps);
+    a1 = a1*a1*a1*a1*a1*a1;
+    a2 = a2*a2*a2*a2*a2*a2;
+    a3 = a3*a3*a3*a3*a3*a3;
 
-                    // get rid of pow here, calculate (1+x)^6
-                    a1 = 1.0+s55/(s11+parm.eps);
-                    a2 = 1.0+s55/(s22+parm.eps);
-                    a3 = 1.0+s55/(s33+parm.eps);
-                    a1 = a1*a1*a1*a1*a1*a1;
-                    a2 = a2*a2*a2*a2*a2*a2;
-                    a3 = a3*a3*a3*a3*a3*a3;
-                    
-                    invsum = 1.0/(a1+a2+a3);
-                    b1 = a1*invsum;
-                    b2 = a2*invsum;
-                    b3 = a3*invsum;
+    invsum = 1.0/(a1+a2+a3);
+    b1 = a1*invsum;
+    b2 = a2*invsum;
+    b3 = a3*invsum;
 
-                    b1 = amrex::max(b1-1.e-5, 0.0)/(b1-1.e-5);
-                    b2 = amrex::max(b2-1.e-5, 0.0)/(b2-1.e-5);
-                    b3 = amrex::max(b3-1.e-5, 0.0)/(b3-1.e-5);
+    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
+    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
+    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
 
-                    v1 = parm.oneSix*(2.0*V6-7.0*V5+5.0*V4);
-                    v2 = parm.oneSix*(-V5-V4+2.0*V3);
-                    v3 = parm.oneSix*(-4.0*V4+5.0*V3-V2);
+    v1 = parm.oneSix*(2.0*V6-7.0*V5+5.0*V4);
+    v2 = parm.oneSix*(-V5-V4+2.0*V3);
+    v3 = parm.oneSix*(-4.0*V4+5.0*V3-V2);
 
-                    a1 = 0.10*b1;
-                    a2 = 0.60*b2;
-                    a3 = 0.30*b3;
+    invsum = 1.0/(a1+a2+a3);
+    w1 = a1*invsum;
+    w2 = a2*invsum;
+    w3 = a3*invsum;
 
-                    invsum = 1.0/(a1+a2+a3);
-                    w1 = a1*invsum;
-                    w2 = a2*invsum;
-                    w3 = a3*invsum;
-
-                    qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
-                }
-            }
-        }
-    }
+    qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
-reconstruction_z (amrex::Box const& bx,
+reconstruction_z (int i, int j, int k, int n,
              amrex::Array4<amrex::Real> const& ql,
              amrex::Array4<amrex::Real> const& qr,
              amrex::Array4<amrex::Real const> const& q,
              Parm const& parm) noexcept
 {
     using amrex::Real;
-    const auto lo = amrex::lbound(bx);
-    const auto hi = amrex::ubound(bx);
+    Real V1 = q(i,j,k-3,n);
+    Real V2 = q(i,j,k-2,n);
+    Real V3 = q(i,j,k-1,n);
+    Real V4 = q(i,j,k,n);
+    Real V5 = q(i,j,k+1,n);
+    Real V6 = q(i,j,k+2,n);
 
-    for (int n = 0; n < NPRIM; ++n) {
-        for (int k = lo.z; k<= hi.z; ++k) {
-            for (int j = lo.y; j <= hi.y; ++j) {
-                for (int i = lo.x; i <= hi.x; ++i) {
-                    Real V1 = q(i,j,k-3,n);
-                    Real V2 = q(i,j,k-2,n);
-                    Real V3 = q(i,j,k-1,n);
-                    Real V4 = q(i,j,k,n);
-                    Real V5 = q(i,j,k+1,n);
-                    Real V6 = q(i,j,k+2,n);
+    // qL
+    Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
+    Real s22 = 13.0*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 3.0*(V2-V4)*(V2-V4);
+    Real s33 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(3.0*V3-4.0*V4+V5)*(3.0*V3-4.0*V4+V5);
 
-                    // qL
-                    Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
-                    Real s22 = 13.0*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 3.0*(V2-V4)*(V2-V4);
-                    Real s33 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(3.0*V3-4.0*V4+V5)*(3.0*V3-4.0*V4+V5);
+    Real s55 = amrex::Math::abs(s11-s33);
 
-                    Real s55 = amrex::Math::abs(s11-s33);
+    // get rid of pow here, calculate (1+x)^6
+    Real a1 = 1.0+s55/(s11+parm.eps);
+    Real a2 = 1.0+s55/(s22+parm.eps);
+    Real a3 = 1.0+s55/(s33+parm.eps);
+    a1 = a1*a1*a1*a1*a1*a1;
+    a2 = a2*a2*a2*a2*a2*a2;
+    a3 = a3*a3*a3*a3*a3*a3;
 
-                    // get rid of pow here, calculate (1+x)^6
-                    Real a1 = 1.0+s55/(s11+parm.eps);
-                    Real a2 = 1.0+s55/(s22+parm.eps);
-                    Real a3 = 1.0+s55/(s33+parm.eps);
-                    a1 = a1*a1*a1*a1*a1*a1;
-                    a2 = a2*a2*a2*a2*a2*a2;
-                    a3 = a3*a3*a3*a3*a3*a3;
-                    
-                    Real invsum = 1.0/(a1+a2+a3);
-                    Real b1 = a1*invsum;
-                    Real b2 = a2*invsum;
-                    Real b3 = a3*invsum;
+    Real invsum = 1.0/(a1+a2+a3);
+    Real b1 = a1*invsum;
+    Real b2 = a2*invsum;
+    Real b3 = a3*invsum;
 
-                    b1 = amrex::max(b1-1.e-5, 0.0)/(b1-1.e-5);
-                    b2 = amrex::max(b2-1.e-5, 0.0)/(b2-1.e-5);
-                    b3 = amrex::max(b3-1.e-5, 0.0)/(b3-1.e-5);
 
-                    Real v1 = parm.oneSix*(2.0*V1-7.0*V2+5.0*V3);
-                    Real v2 = parm.oneSix*(-V2-V3+2.0*V4);
-                    Real v3 = parm.oneSix*(-4.0*V3+5.0*V4-V5);
+    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
+    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
+    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
 
-                    a1 = 0.10*b1;
-                    a2 = 0.60*b2;
-                    a3 = 0.30*b3;
+    Real v1 = parm.oneSix*(2.0*V1-7.0*V2+5.0*V3);
+    Real v2 = parm.oneSix*(-V2-V3+2.0*V4);
+    Real v3 = parm.oneSix*(-4.0*V3+5.0*V4-V5);
 
-                    invsum = 1.0/(a1+a2+a3);
-                    Real w1 = a1*invsum;
-                    Real w2 = a2*invsum;
-                    Real w3 = a3*invsum;
+    invsum = 1.0/(a1+a2+a3);
+    Real w1 = a1*invsum;
+    Real w2 = a2*invsum;
+    Real w3 = a3*invsum;
 
-                    ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
+    ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
 
-                    // qR
-                    s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
-                    s22 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(V5-V3)*(V5-V3);
-                    s33 = 13.0*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 3.0*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
+    // qR
+    s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
+    s22 = 13.0*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 3.0*(V5-V3)*(V5-V3);
+    s33 = 13.0*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 3.0*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
 
-                    s55 = amrex::Math::abs(s11-s33);
+    s55 = amrex::Math::abs(s11-s33);
 
-                    // get rid of pow here, calculate (1+x)^6
-                    a1 = 1.0+s55/(s11+parm.eps);
-                    a2 = 1.0+s55/(s22+parm.eps);
-                    a3 = 1.0+s55/(s33+parm.eps);
-                    a1 = a1*a1*a1*a1*a1*a1;
-                    a2 = a2*a2*a2*a2*a2*a2;
-                    a3 = a3*a3*a3*a3*a3*a3;
+    // get rid of pow here, calculate (1+x)^6
+    a1 = 1.0+s55/(s11+parm.eps);
+    a2 = 1.0+s55/(s22+parm.eps);
+    a3 = 1.0+s55/(s33+parm.eps);
+    a1 = a1*a1*a1*a1*a1*a1;
+    a2 = a2*a2*a2*a2*a2*a2;
+    a3 = a3*a3*a3*a3*a3*a3;
 
-                    invsum = 1.0/(a1+a2+a3);
-                    b1 = a1*invsum;
-                    b2 = a2*invsum;
-                    b3 = a3*invsum;
+    invsum = 1.0/(a1+a2+a3);
+    b1 = a1*invsum;
+    b2 = a2*invsum;
+    b3 = a3*invsum;
 
-                    b1 = amrex::max(b1-1.e-5, 0.0)/(b1-1.e-5);
-                    b2 = amrex::max(b2-1.e-5, 0.0)/(b2-1.e-5);
-                    b3 = amrex::max(b3-1.e-5, 0.0)/(b3-1.e-5);
+    a1 = 0.1*(b1<1.e-5? 0.0:1.0);
+    a2 = 0.6*(b2<1.e-5? 0.0:1.0);
+    a3 = 0.3*(b3<1.e-5? 0.0:1.0);
 
-                    v1 = parm.oneSix*(2.0*V6-7.0*V5+5.0*V4);
-                    v2 = parm.oneSix*(-V5-V4+2.0*V3);
-                    v3 = parm.oneSix*(-4.0*V4+5.0*V3-V2);
+    v1 = parm.oneSix*(2.0*V6-7.0*V5+5.0*V4);
+    v2 = parm.oneSix*(-V5-V4+2.0*V3);
+    v3 = parm.oneSix*(-4.0*V4+5.0*V3-V2);
 
-                    a1 = 0.10*b1;
-                    a2 = 0.60*b2;
-                    a3 = 0.30*b3;
+    invsum = 1.0/(a1+a2+a3);
+    w1 = a1*invsum;
+    w2 = a2*invsum;
+    w3 = a3*invsum;
 
-                    invsum = 1.0/(a1+a2+a3);
-                    w1 = a1*invsum;
-                    w2 = a2*invsum;
-                    w3 = a3*invsum;
-
-                    qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
-                }
-            }
-        }
-    }
+    qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
 }
 
 
