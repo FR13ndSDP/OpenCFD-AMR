@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22.1)
 
-project( ebamr-GPU
+project( ebamr
          DESCRIPTION "An AMR code for high order methods"
          HOMEPAGE_URL "https://github.com/FR13ndSDP/ebamr-GPU"
          VERSION 1.0
@@ -9,33 +9,37 @@ project( ebamr-GPU
 
 message(STATUS "CMake version: ${CMAKE_VERSION}")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Util/CMake")
 
 #
 # Base options
 #
-set(PELELMEX_DIM             "3"        CACHE STRING "Number of physical dimensions")
-set(PELELMEX_PRECISION       "DOUBLE"   CACHE STRING "Floating point precision SINGLE or DOUBLE")
-set(PELELMEX_CASE            "0_Sod"     CACHE STRING "Case folder")
+set(EBAMR_DIM             "3"        CACHE STRING "Number of physical dimensions")
+set(EBAMR_PRECISION       "DOUBLE"   CACHE STRING "Floating point precision SINGLE or DOUBLE")
+set(EBAMR_CASE            "0_Sod"     CACHE STRING "Case folder")
 #
 # Physics options
 #
-option(PELELMEX_USE_EB        "Enable Embedded Boundary"     ON)
+option(OPTION_USE_EB        "Enable Embedded Boundary"     ON)
 
 #
 # Misc options
 #
-option(PELELMEX_ENABLE_TINY_PROFILE "Enable AMReX tiny profiler" OFF)
-option(PELELMEX_ENABLE_HDF5         "Enable HDF5 PlotFiles"      OFF)
+option(OPTION_ENABLE_TINY_PROFILE "Enable AMReX tiny profiler" OFF)
+option(OPTION_ENABLE_HDF5         "Enable HDF5 PlotFiles"      OFF)
+option(OPTION_ENABLE_HYPRE        "Enable Hypre"               OFF)
+option(OPTION_ENABLE_SUNDIALS     "Enable Sundials integrator" OFF)
 
 #
 # HPC options
 #
-option(PELELMEX_MPI    "Enable MPI"    OFF)
-option(PELELMEX_OPENMP "Enable OpenMP" OFF)
-option(PELELMEX_CUDA   "Enable CUDA"   OFF)
-option(PELELMEX_HIP    "Enable HIP"    OFF)
-option(PELELMEX_SYCL   "Enable SyCL"   OFF)
+option(OPTION_MPI    "Enable MPI"    OFF)
+option(OPTION_OPENMP "Enable OpenMP" OFF)
+option(OPTION_CUDA   "Enable CUDA"   ON)
+option(OPTION_HIP    "Enable HIP"    OFF)
+option(OPTION_SYCL   "Enable SyCL"   OFF)
 
 # C++ Options
 set(CMAKE_CXX_STANDARD 17)
@@ -45,53 +49,51 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #
 # Setup Languages
 #
-if (PELELMEX_CUDA)
+if (OPTION_CUDA)
    enable_language(CUDA)
 endif ()
-if (PELELMEX_HIP)
+if (OPTION_HIP)
    enable_language(HIP)
 endif ()
 
 # Checks
-if(PELELMEX_DIM EQUAL 1)
-    message(FATAL_ERROR "PeleLMeX does not support 1D.")
+if(EBAMR_DIM EQUAL 1)
+    message(FATAL_ERROR "EBAMR does not support 1D.")
 endif()
 
 #
 # Cases
 #
-set(PELELMEX_EXEC_SUBDIRS Exec/)
-list(TRANSFORM PELELMEX_EXEC_SUBDIRS PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
+set(EBAMR_EXEC_SUBDIRS Exec/)
+list(TRANSFORM EBAMR_EXEC_SUBDIRS PREPEND "${CMAKE_CURRENT_LIST_DIR}/")
 set(EXEC_DIR "")
-foreach(subdir ${PELELMEX_EXEC_SUBDIRS})
+foreach(subdir ${EBAMR_EXEC_SUBDIRS})
     FILE(GLOB caselist ${subdir}/*)
     foreach(case ${caselist})
         if(IS_DIRECTORY ${case})
             get_filename_component( case_dir ${case} NAME)
-            LIST(APPEND PELELMEX_CASE_LIST ${case_dir})
-            if( ${PELELMEX_CASE} STREQUAL ${case_dir})
+            LIST(APPEND EBAMR_CASE_LIST ${case_dir})
+            if( ${EBAMR_CASE} STREQUAL ${case_dir})
                 set(EXEC_DIR ${case})
             endif()
         endif()
     endforeach()
 endforeach()
 if (NOT EXEC_DIR)
-    message(FATAL_ERROR "PELELMEX_CASE=${PELELMEX_CASE} is not a valid case !")
+    message(FATAL_ERROR "EBAMR_CASE=${EBAMR_CASE} is not a valid case !")
 endif()
 
-########################### PeleLMeX ##################################
-add_executable(pelelmex "")
-set_target_properties(pelelmex PROPERTIES OUTPUT_NAME "PeleLMeX${PELELMEX_DIM}d.exe")
+########################### EBAMR #####################################
+add_executable(ebamr "")
+set_target_properties(ebamr PROPERTIES OUTPUT_NAME "EBR${EBAMR_DIM}d.exe")
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/Source)
 add_subdirectory(${SRC_DIR})
 add_subdirectory(${EXEC_DIR})
-include(SetRpath)
 
 if ( NOT CMAKE_CXX_FLAGS )
-  target_link_libraries(pelelmex PUBLIC AMReX::Flags_CXX)
+  target_link_libraries(ebamr PUBLIC AMReX::Flags_CXX)
 endif ()
-target_link_libraries(pelelmex PUBLIC amrex)
 ########################### AMReX #####################################
 
 message(STATUS "AMReX Configure Section")
@@ -100,14 +102,15 @@ include(SetAMReXOptions)
 list(APPEND CMAKE_MODULE_PATH "${AMREX_SUBMOD_LOCATION}/Tools/CMake")
 add_subdirectory(${AMREX_SUBMOD_LOCATION})
 include(AMReXBuildInfo)
-generate_buildinfo(pelelmex ${CMAKE_SOURCE_DIR})
-target_include_directories(pelelmex SYSTEM PUBLIC ${AMREX_SUBMOD_LOCATION}/Tools/C_scripts)
+generate_buildinfo(ebamr ${CMAKE_SOURCE_DIR})
+target_include_directories(ebamr SYSTEM PUBLIC ${AMREX_SUBMOD_LOCATION}/Tools/C_scripts)
+target_link_libraries(ebamr PUBLIC amrex)
 
 ########################### Summary ##################################
 include(AMReXGenexHelpers)
 include(AMReXTargetHelpers)
 
-get_target_properties_flattened(pelelmex  _includes _defines _flags _link_line)
+get_target_properties_flattened(ebamr  _includes _defines _flags _link_line)
 set(_lang CXX)
 set(_prop _includes _defines _flags _link_line)
 
