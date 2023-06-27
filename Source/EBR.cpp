@@ -372,7 +372,7 @@ EBR::read_params ()
     }
     pp.query("time_integration", time_integration);
     pp.query("eos_gamma", h_parm->eos_gamma);
-    pp.query("eos_mu"   , h_parm->eos_mu);
+    pp.query("eos_m"   , h_parm->eos_m);
     pp.query("Pr"       , h_parm->Pr);
     pp.query("C_s"      , h_parm->C_s);
     pp.query("T_s"      , h_parm->T_s);

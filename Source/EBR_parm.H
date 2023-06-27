@@ -7,7 +7,7 @@
 struct Parm
 {
     amrex::Real eos_gamma = 1.4;
-    amrex::Real eos_mu = 28.97e-3;  // mean molecular weight
+    amrex::Real eos_m = 28.97e-3;  // mean molecular weight
 
     amrex::Real cv;
     amrex::Real cp;
