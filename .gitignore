@@ -43,3 +43,6 @@
 .vscode/**
 **/compile_commands.json
 **/.cache/**
+
+# CMake related
+build/**
