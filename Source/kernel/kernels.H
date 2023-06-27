@@ -131,9 +131,12 @@ reconstruction_x (int i, int j, int k, int n,
     Real a1 = 1.0+s55/(s11+parm.eps);
     Real a2 = 1.0+s55/(s22+parm.eps);
     Real a3 = 1.0+s55/(s33+parm.eps);
-    a1 = a1*a1*a1*a1*a1*a1;
-    a2 = a2*a2*a2*a2*a2*a2;
-    a3 = a3*a3*a3*a3*a3*a3;
+    a1 = a1*a1;
+    a1 = a1*a1*a1;
+    a2 = a2*a2;
+    a2 = a2*a2*a2;
+    a3 = a3*a3;
+    a3 = a3*a3*a3;
 
     Real invsum = 1.0/(a1+a2+a3);
     Real b1 = a1*invsum;
@@ -167,9 +170,12 @@ reconstruction_x (int i, int j, int k, int n,
     a1 = 1.0+s55/(s11+parm.eps);
     a2 = 1.0+s55/(s22+parm.eps);
     a3 = 1.0+s55/(s33+parm.eps);
-    a1 = a1*a1*a1*a1*a1*a1;
-    a2 = a2*a2*a2*a2*a2*a2;
-    a3 = a3*a3*a3*a3*a3*a3;
+    a1 = a1*a1;
+    a1 = a1*a1*a1;
+    a2 = a2*a2;
+    a2 = a2*a2*a2;
+    a3 = a3*a3;
+    a3 = a3*a3*a3;
 
     invsum = 1.0/(a1+a2+a3);
     b1 = a1*invsum;
@@ -220,9 +226,12 @@ reconstruction_y (int i, int j, int k, int n,
     Real a1 = 1.0+s55/(s11+parm.eps);
     Real a2 = 1.0+s55/(s22+parm.eps);
     Real a3 = 1.0+s55/(s33+parm.eps);
-    a1 = a1*a1*a1*a1*a1*a1;
-    a2 = a2*a2*a2*a2*a2*a2;
-    a3 = a3*a3*a3*a3*a3*a3;
+    a1 = a1*a1;
+    a1 = a1*a1*a1;
+    a2 = a2*a2;
+    a2 = a2*a2*a2;
+    a3 = a3*a3;
+    a3 = a3*a3*a3;
 
     Real invsum = 1.0/(a1+a2+a3);
     Real b1 = a1*invsum;
@@ -256,9 +265,12 @@ reconstruction_y (int i, int j, int k, int n,
     a1 = 1.0+s55/(s11+parm.eps);
     a2 = 1.0+s55/(s22+parm.eps);
     a3 = 1.0+s55/(s33+parm.eps);
-    a1 = a1*a1*a1*a1*a1*a1;
-    a2 = a2*a2*a2*a2*a2*a2;
-    a3 = a3*a3*a3*a3*a3*a3;
+    a1 = a1*a1;
+    a1 = a1*a1*a1;
+    a2 = a2*a2;
+    a2 = a2*a2*a2;
+    a3 = a3*a3;
+    a3 = a3*a3*a3;
 
     invsum = 1.0/(a1+a2+a3);
     b1 = a1*invsum;
@@ -309,9 +321,12 @@ reconstruction_z (int i, int j, int k, int n,
     Real a1 = 1.0+s55/(s11+parm.eps);
     Real a2 = 1.0+s55/(s22+parm.eps);
     Real a3 = 1.0+s55/(s33+parm.eps);
-    a1 = a1*a1*a1*a1*a1*a1;
-    a2 = a2*a2*a2*a2*a2*a2;
-    a3 = a3*a3*a3*a3*a3*a3;
+    a1 = a1*a1;
+    a1 = a1*a1*a1;
+    a2 = a2*a2;
+    a2 = a2*a2*a2;
+    a3 = a3*a3;
+    a3 = a3*a3*a3;
 
     Real invsum = 1.0/(a1+a2+a3);
     Real b1 = a1*invsum;
@@ -345,9 +360,12 @@ reconstruction_z (int i, int j, int k, int n,
     a1 = 1.0+s55/(s11+parm.eps);
     a2 = 1.0+s55/(s22+parm.eps);
     a3 = 1.0+s55/(s33+parm.eps);
-    a1 = a1*a1*a1*a1*a1*a1;
-    a2 = a2*a2*a2*a2*a2*a2;
-    a3 = a3*a3*a3*a3*a3*a3;
+    a1 = a1*a1;
+    a1 = a1*a1*a1;
+    a2 = a2*a2;
+    a2 = a2*a2*a2;
+    a3 = a3*a3;
+    a3 = a3*a3*a3;
 
     invsum = 1.0/(a1+a2+a3);
     b1 = a1*invsum;
