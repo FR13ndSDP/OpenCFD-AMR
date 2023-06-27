@@ -140,7 +140,7 @@ EBR::variableSetUp ()
 
     bool state_data_extrap = false;
     bool store_in_checkpoint = true;
-    // use cell_cons_interp
+    // TODO: use cell_cons_interp here, what's the effect of others
     desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
                            StateDescriptor::Point,NUM_GROW,NUM_STATE,
                            &cell_cons_interp,state_data_extrap,store_in_checkpoint);
