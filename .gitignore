@@ -42,4 +42,4 @@
 # confifuration
 .vscode/**
 **/compile_commands.json
-.cache/**
+**/.cache/**
