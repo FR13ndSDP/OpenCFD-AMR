@@ -383,6 +383,7 @@ compute_flux_x (int i, int j, int k,
     using amrex::Real;
     amrex::GpuArray<Real, NCONS> fm;
     amrex::GpuArray<Real, NCONS> fp;
+    Real tmp = Real(1.0)/(Real(2.0)*parm.eos_gamma);
 
     Real dl= ql(i,j,k,0);
     Real uul=ql(i,j,k,1);
@@ -403,7 +404,7 @@ compute_flux_x (int i, int j, int k,
     Real E1P=(uul+amrex::Math::abs(uul))*Real(0.5);
     Real E2P=(uul-al+amrex::Math::abs(uul-al))*Real(0.5);
     Real E3P=(uul+al+amrex::Math::abs(uul+al))*Real(0.5);
-    Real tmp0=dl/(Real(2.0)*parm.eos_gamma);
+    Real tmp0=dl*tmp;
     fp[0]=tmp0*(tmp1*E1P+E2P+E3P);
     fp[1]=tmp0*(tmp1*E1P*uul+E2P*(uul-al)+E3P*(uul+al));
     fp[2]=tmp0*(tmp1*E1P*vvl+E2P*vvl+E3P*vvl);
@@ -414,7 +415,7 @@ compute_flux_x (int i, int j, int k,
     Real E1M=(uur-amrex::Math::abs(uur))*Real(0.5);
     Real E2M=(uur-ar-amrex::Math::abs(uur-ar))*Real(0.5);
     Real E3M=(uur+ar-amrex::Math::abs(uur+ar))*Real(0.5);
-    tmp0=dr/(Real(2.0)*parm.eos_gamma);
+    tmp0=dr*tmp;
     fm[0]=tmp0*(tmp1*E1M+E2M+E3M);
     fm[1]=tmp0*(tmp1*E1M*uur+E2M*(uur-ar)+E3M*(uur+ar));
     fm[2]=tmp0*(tmp1*E1M*vvr+E2M*vvr+E3M*vvr);
@@ -439,6 +440,7 @@ compute_flux_y (int i, int j, int k,
     using amrex::Real;
     amrex::GpuArray<Real, NCONS> fp;
     amrex::GpuArray<Real, NCONS> fm;
+    Real tmp = Real(1.0)/(Real(2.0)*parm.eos_gamma);
 
     Real dl=ql(i,j,k,0);
     Real uul=ql(i,j,k,2);
@@ -459,7 +461,7 @@ compute_flux_y (int i, int j, int k,
     Real E1P=(uul+amrex::Math::abs(uul))*Real(0.5);
     Real E2P=(uul-al+amrex::Math::abs(uul-al))*Real(0.5);
     Real E3P=(uul+al+amrex::Math::abs(uul+al))*Real(0.5);
-    Real tmp0=dl/(Real(2.0)*parm.eos_gamma);
+    Real tmp0=dl*tmp;
     fp[0]=tmp0*(tmp1*E1P+E2P+E3P);
     fp[1]=tmp0*(tmp1*E1P*uul+E2P*(uul-al)+E3P*(uul+al));
     fp[2]=tmp0*(tmp1*E1P*vvl+E2P*vvl+E3P*vvl);
@@ -470,7 +472,7 @@ compute_flux_y (int i, int j, int k,
     Real E1M=(uur-amrex::Math::abs(uur))*Real(0.5);
     Real E2M=(uur-ar-amrex::Math::abs(uur-ar))*Real(0.5);
     Real E3M=(uur+ar-amrex::Math::abs(uur+ar))*Real(0.5);
-    tmp0=dr/(Real(2.0)*parm.eos_gamma);
+    tmp0=dr*tmp;
     fm[0]=tmp0*(tmp1*E1M+E2M+E3M);
     fm[1]=tmp0*(tmp1*E1M*uur+E2M*(uur-ar)+E3M*(uur+ar));
     fm[2]=tmp0*(tmp1*E1M*vvr+E2M*vvr+E3M*vvr);
@@ -497,6 +499,7 @@ compute_flux_z (int i, int j, int k,
     using amrex::Real;
     amrex::GpuArray<Real, NCONS> fp;
     amrex::GpuArray<Real, NCONS> fm;
+    Real tmp = Real(1.0)/(Real(2.0)*parm.eos_gamma);
 
     Real dl=ql(i,j,k,0);
     Real uul=ql(i,j,k,3);
@@ -517,7 +520,7 @@ compute_flux_z (int i, int j, int k,
     Real E1P=(uul+amrex::Math::abs(uul))*Real(0.5);
     Real E2P=(uul-al+amrex::Math::abs(uul-al))*Real(0.5);
     Real E3P=(uul+al+amrex::Math::abs(uul+al))*Real(0.5);
-    Real tmp0=dl/(Real(2.0)*parm.eos_gamma);
+    Real tmp0=dl*tmp;
     fp[0]=tmp0*(tmp1*E1P+E2P+E3P);
     fp[1]=tmp0*(tmp1*E1P*uul+E2P*(uul-al)+E3P*(uul+al));
     fp[2]=tmp0*(tmp1*E1P*vvl+E2P*vvl+E3P*vvl);
@@ -528,7 +531,7 @@ compute_flux_z (int i, int j, int k,
     Real E1M=(uur-amrex::Math::abs(uur))*Real(0.5);
     Real E2M=(uur-ar-amrex::Math::abs(uur-ar))*Real(0.5);
     Real E3M=(uur+ar-amrex::Math::abs(uur+ar))*Real(0.5);
-    tmp0=dr/(Real(2.0)*parm.eos_gamma);
+    tmp0=dr*tmp;
     fm[0]=tmp0*(tmp1*E1M+E2M+E3M);
     fm[1]=tmp0*(tmp1*E1M*uur+E2M*(uur-ar)+E3M*(uur+ar));
     fm[2]=tmp0*(tmp1*E1M*vvr+E2M*vvr+E3M*vvr);
@@ -560,8 +563,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
     // derive k
-    Real ktl = mutl * parm.cv * parm.eos_gamma * parm.Prinv;
-    Real ktr = mutr * parm.cv * parm.eos_gamma * parm.Prinv;
+    Real ktl = mutl * parm.kOverMu;
+    Real ktr = mutr * parm.kOverMu;
 
     Real dTdx = (Tl-Tr)*dxinv[0];
     Real dudx = (q(i,j,k,QU)-q(i-1,j,k,QU))*dxinv[0];
@@ -602,8 +605,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
     // derive k
-    Real ktl = mutl * parm.cv * parm.eos_gamma * parm.Prinv;
-    Real ktr = mutr * parm.cv * parm.eos_gamma * parm.Prinv;
+    Real ktl = mutl * parm.kOverMu;
+    Real ktr = mutr * parm.kOverMu;
 
     Real dTdy = (Tl-Tr)*dxinv[1];
     Real dudy = (q(i,j,k,QU)-q(i,j-1,k,QU))*dxinv[1];
@@ -644,8 +647,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
     // derive k
-    Real ktl = mutl * parm.cv * parm.eos_gamma * parm.Prinv;
-    Real ktr = mutr * parm.cv * parm.eos_gamma * parm.Prinv;
+    Real ktl = mutl * parm.kOverMu;
+    Real ktr = mutr * parm.kOverMu;
 
     Real dTdz = (Tl-Tr)*dxinv[2];
     Real dudz = (q(i,j,k,QU)-q(i,j,k-1,QU))*dxinv[2];
