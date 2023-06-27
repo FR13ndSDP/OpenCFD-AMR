@@ -28,7 +28,7 @@ nc_tag_dengrad (int i, int j, int k,
     ax = amrex::max(ax,std::abs(rho(i,j,k) - rho(i-1,j,k)));
     ay = amrex::max(ay,std::abs(rho(i,j,k) - rho(i,j-1,k)));
     az = amrex::max(az,std::abs(rho(i,j,k) - rho(i,j,k-1)));
-    if (amrex::max(ax,ay,az) >= dengrad_threshold | (y < 0.005 && x > 0.01)) {
+    if (amrex::max(ax,ay,az) >= dengrad_threshold | (y < 0.003 && x > 0.01)) {
         tag(i,j,k) = tagval;
     }
 }

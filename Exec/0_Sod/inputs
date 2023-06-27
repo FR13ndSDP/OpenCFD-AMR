@@ -54,4 +54,7 @@ ebr.do_visc = false
 # EB parameters
 eb2.geom_type = none
 
-amrex.fpe_trap_invalid=1 # floating point exception trapping
+# Error handling
+amrex.fpe_trap_invalid=0  # NaN, turn this off for GPU profiling
+amrex.fpe_trap_zero=0     # devided by zero
+amrex.fpe_trap_overflow=0 # overflow
