@@ -12,6 +12,7 @@ struct Parm
     amrex::Real cv;
     amrex::Real cp;
     amrex::Real Rg;
+    amrex::Real kOverMu;
 
     amrex::Real Pr  = 0.72;     // Prandtl number
     amrex::Real C_s = 1.458e-6; // constant in Sutherland's law
@@ -21,7 +22,6 @@ struct Parm
     amrex::Real smallp = 1.e-10;
     amrex::Real eps = 1.e-40;
     
-    amrex::Real Prinv = 1.0/Pr;
     amrex::Real twoThirds = 2.0/3.0;
     amrex::Real oneSix = 1.0/6.0;
 
