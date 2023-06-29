@@ -310,8 +310,6 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                         const int irho = Density;
                         const int imz = Zmom;
                         const int irhoE = Eden;
-                        auto const& dsdtfab = dSdt.array(mfi); 
-                        auto const& sfab = S.array(mfi); 
                         ParallelFor(bx,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {

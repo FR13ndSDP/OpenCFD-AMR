@@ -1,13 +1,10 @@
 #include <EBR.H>
-#include <EBR_tagging.H>
 #include <EBR_parm.H>
 
 #include <AMReX_EBMultiFabUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_EBFArrayBox.H>
-#include <AMReX_EBAmrUtil.H>
 #include <AMReX_MultiCutFab.H>
-#include <climits>
 
 using namespace amrex;
 
@@ -34,7 +31,7 @@ Vector<RealBox> EBR::refine_boxes;
 int       EBR::refine_cutcells = 1;
 
 EBR::EBR ()
-{}
+= default;
 
 EBR::EBR (Amr&            papa,
           int             lev,
@@ -55,7 +52,7 @@ EBR::EBR (Amr&            papa,
 }
 
 EBR::~EBR ()
-{}
+= default;
 
 void
 EBR::init (AmrLevel& old)
@@ -292,7 +289,7 @@ EBR::printTotal () const
 {
     const MultiFab& S_new = get_new_data(State_Type);
     MultiFab mf(grids, dmap, 1, 0);
-    std::array<Real,5> tot;
+    Array<Real,5> tot;
     for (int comp = 0; comp < 5; ++comp) {
         MultiFab::Copy(mf, S_new, comp, 0, 1, 0);
         tot[comp] = mf.sum(0,true) * geom.ProbSize();

@@ -14,8 +14,6 @@ ProbParm* EBR::d_prob_parm = nullptr;
 static Box the_same_box (const Box& b) { return b; }
 //static Box grow_box_by_one (const Box& b) { return amrex::grow(b,1); }
 
-using BndryFunc = StateDescriptor::BndryFunc;
-
 // TODO: Add fix temperature wall boudary
 //
 // Components are:

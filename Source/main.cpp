@@ -6,7 +6,7 @@
 #include <EBR.H>
 
 using namespace amrex;
-void initialize_Geom (const Geometry& geom, const int required_level, const int max_level);
+void initialize_Geom (const Geometry& geom, int required_level, int max_level);
 
 amrex::LevelBld* getLevelBld ();
 

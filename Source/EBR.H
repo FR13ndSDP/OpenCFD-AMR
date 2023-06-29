@@ -15,7 +15,7 @@ public:
   EBR(amrex::Amr &papa, int lev, const amrex::Geometry &level_geom,
       const amrex::BoxArray &bl, const amrex::DistributionMapping &dm,
       amrex::Real time);
-  virtual ~EBR();
+  ~EBR() override;
 
   // disable copy
   EBR(const EBR &rhs) = delete;
@@ -129,10 +129,10 @@ protected:
   void printTotal() const;
 
   // geometric properties
-  const amrex::MultiFab *volfrac;
-  const amrex::MultiCutFab *bndrycent;
-  std::array<const amrex::MultiCutFab *, AMREX_SPACEDIM> areafrac;
-  std::array<const amrex::MultiCutFab *, AMREX_SPACEDIM> facecent;
+  const amrex::MultiFab *volfrac{};
+  const amrex::MultiCutFab *bndrycent{};
+  std::array<const amrex::MultiCutFab *, AMREX_SPACEDIM> areafrac{};
+  std::array<const amrex::MultiCutFab *, AMREX_SPACEDIM> facecent{};
 
   // cell state descriptor
   amrex::iMultiFab level_mask;
@@ -176,8 +176,8 @@ public:
 };
 
 void ebr_bcfill (amrex::Box const& bx, amrex::FArrayBox& data,
-                 const int dcomp, const int numcomp,
-                 amrex::Geometry const& geom, const amrex::Real time,
-                 const amrex::Vector<amrex::BCRec>& bcr, const int bcomp,
-                 const int scomp);
+                 int dcomp, int numcomp,
+                 amrex::Geometry const& geom, amrex::Real time,
+                 const amrex::Vector<amrex::BCRec>& bcr, int bcomp,
+                 int scomp);
 #endif
