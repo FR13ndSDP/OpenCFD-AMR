@@ -51,6 +51,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #
 if (OPTION_CUDA)
    enable_language(CUDA)
+   # TODO: just a workaround
+   set(AMREX_CUDA_ARCH 80)
+   set(AMREX_CUDA_ARCHS 80)
 endif ()
 if (OPTION_HIP)
    enable_language(HIP)
@@ -104,8 +107,10 @@ add_subdirectory(${AMREX_SUBMOD_LOCATION})
 include(AMReXBuildInfo)
 generate_buildinfo(ebamr ${CMAKE_SOURCE_DIR})
 target_include_directories(ebamr SYSTEM PUBLIC ${AMREX_SUBMOD_LOCATION}/Tools/C_scripts)
+if (OPTION_CUDA)
+  setup_target_for_cuda_compilation(ebamr)
+endif ()
 target_link_libraries(ebamr PUBLIC amrex)
-
 ########################### Summary ##################################
 include(AMReXGenexHelpers)
 include(AMReXTargetHelpers)
