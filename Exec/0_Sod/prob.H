@@ -3,9 +3,9 @@
 
 #include <AMReX_Geometry.H>
 #include <AMReX_FArrayBox.H>
-#include "EBR_index_macros.H"
-#include "EBR_parm.H"
-#include "ebr_prob_parm.H"
+#include "IndexDefines.H"
+#include "Constants.H"
+#include "prob_parm.H"
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE

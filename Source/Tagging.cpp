@@ -1,5 +1,5 @@
 #include <EBR.H>
-#include <EBR_tagging.H>
+#include <Tagging.H>
 #include <AMReX_EBMultiFabUtil.H>
 #include <AMReX_EBFArrayBox.H>
 #include <AMReX_EBAmrUtil.H>
@@ -74,7 +74,7 @@ EBR::errorEst (TagBoxArray& tags, int, int, Real time, int, int)
                 amrex::ParallelFor(bx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    nc_tag_dengrad(i,j,k,tag,rhofab,geomdata,dengrad_threshold,tagval,clearval);
+                    tag_dengrad(i,j,k,tag,rhofab,geomdata,dengrad_threshold,tagval,clearval);
                 });
             }
         }

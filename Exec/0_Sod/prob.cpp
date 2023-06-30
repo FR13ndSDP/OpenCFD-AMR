@@ -1,9 +1,8 @@
-
 #include <AMReX_PROB_AMR_F.H>
 #include <AMReX_ParmParse.H>
-#include "ebr_prob_parm.H"
+#include "prob_parm.H"
 #include "EBR.H"
-#include "EBR_index_macros.H"
+#include "IndexDefines.H"
 
 extern "C" {
     void amrex_probinit (const int* /*init*/,

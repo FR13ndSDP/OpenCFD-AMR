@@ -3,18 +3,18 @@ target_include_directories(ebamr PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_D
 target_sources(ebamr
     PRIVATE
         main.cpp
-        EBR.H
-        EBR_index_macros.H
-        EBR_parm.H
-        EBR_tagging.H
         LevelBld.cpp
+        EBR.H
         EBR.cpp
-        EBR_setup.cpp
-        EBR_geom.cpp
-        EBR_io.cpp
-        EBR_advance.cpp
-        EBR_tagging.cpp
-        EBR_parm.cpp
+        IndexDefines.H
+        Constants.H
+        Constants.cpp
+        Tagging.H
+        Tagging.cpp
+        Setup.cpp
+        Geometry.cpp
+        IO.cpp
+        Advance.cpp
 )
 
 add_subdirectory(kernel)

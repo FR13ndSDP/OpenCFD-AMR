@@ -1,6 +1,9 @@
 #include <EBR.H>
-#include <EBR_index_macros.H>
-#include <kernels.H>
+#include <IndexDefines.H>
+#include <Kernels.H>
+#include <Reconstruction.H>
+#include <FluxSplit.H>
+#include <Diffusion.H>
 
 using namespace amrex;
 
@@ -198,6 +201,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                 // for flux_y in y ...
                 for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
                     flux[idim].resize(amrex::surroundingNodes(bx,idim),ncomp);
+                    flux[idim].setVal<RunOn::Gpu>(0.0);
                 }
 
                 auto const& sfab = S.array(mfi);
@@ -345,59 +349,38 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                 {
                     // cut cells and its neighbor
 
-                    // FArrayBox* p_drho_as_crse = (fine) ?
-                    //         fine->getCrseData(mfi) : &fab_drho_as_crse;
-                    // const IArrayBox* p_rrflag_as_crse = (fine) ?
-                    //     fine->getCrseFlag(mfi) : &fab_rrflag_as_crse;
+                    FArrayBox* p_drho_as_crse = (fine) ?
+                            fine->getCrseData(mfi) : &fab_drho_as_crse;
+                    const IArrayBox* p_rrflag_as_crse = (fine) ?
+                        fine->getCrseFlag(mfi) : &fab_rrflag_as_crse;
 
-                    // if (current) {
-                    //     dm_as_fine.resize(amrex::grow(bx,1),ncomp);
-                    // }
+                    if (current) {
+                        dm_as_fine.resize(amrex::grow(bx,1),ncomp);
+                    }
 
-                    // int as_fine = (fine != nullptr);
-                    // int as_crse = (current != nullptr);
+                    int as_fine = (fine != nullptr);
+                    int as_crse = (current != nullptr);
 
-                    // eb_compute_dudt(BL_TO_FORTRAN_BOX(bx),
-                    //                 BL_TO_FORTRAN_ANYD(dSdt[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD(S[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD(flux[0]),
-                    //                 BL_TO_FORTRAN_ANYD(flux[1]),
-                    //                 BL_TO_FORTRAN_ANYD(flux[2]),
-                    //                 BL_TO_FORTRAN_ANYD(flag),
-                    //                 BL_TO_FORTRAN_ANYD((*volfrac)[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD((*bndrycent)[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD((*areafrac[0])[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD((*areafrac[1])[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD((*areafrac[2])[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD((*facecent[0])[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD((*facecent[1])[mfi]),
-                    //                 BL_TO_FORTRAN_ANYD((*facecent[2])[mfi]),
-                    //                 &as_fine,
-                    //                 BL_TO_FORTRAN_ANYD(*p_drho_as_crse),
-                    //                 BL_TO_FORTRAN_ANYD(*p_rrflag_as_crse),
-                    //                 &as_crse,
-                    //                 BL_TO_FORTRAN_ANYD(dm_as_fine),
-                    //                 BL_TO_FORTRAN_ANYD(level_mask[mfi]),
-                    //                 dx, &dt,&level);
+                    eb_compute_dSdt_box();
 
-                    // if (fine) {
-                    //     fine->CrseAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
-                    //                         (*volfrac)[mfi],
-                    //                         {&((*areafrac[0])[mfi]),
-                    //                          &((*areafrac[1])[mfi]),
-                    //                          &((*areafrac[2])[mfi])},
-                    //                         RunOn::Cpu);
-                    // }
+                    if (fine) {
+                        fine->CrseAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
+                                            (*volfrac)[mfi],
+                                            {&((*areafrac[0])[mfi]),
+                                             &((*areafrac[1])[mfi]),
+                                             &((*areafrac[2])[mfi])},
+                                            RunOn::Gpu);
+                    }
 
-                    // if (current) {
-                    //     current->FineAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
-                    //                         (*volfrac)[mfi],
-                    //                         {&((*areafrac[0])[mfi]),
-                    //                          &((*areafrac[1])[mfi]),
-                    //                          &((*areafrac[2])[mfi])},
-                    //                         dm_as_fine,
-                    //                         RunOn::Cpu);
-                    // }
+                    if (current) {
+                        current->FineAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
+                                            (*volfrac)[mfi],
+                                            {&((*areafrac[0])[mfi]),
+                                             &((*areafrac[1])[mfi]),
+                                             &((*areafrac[2])[mfi])},
+                                            dm_as_fine,
+                                            RunOn::Gpu);
+                    }
                 }
             }
         }

@@ -1,6 +1,6 @@
 #include <EBR.H>
 
-#include <EBR_index_macros.H>
+#include <IndexDefines.H>
 #include <AMReX_FArrayBox.H>
 #include <AMReX_Geometry.H>
 

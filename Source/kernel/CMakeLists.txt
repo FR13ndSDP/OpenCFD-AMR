@@ -2,5 +2,8 @@ target_include_directories(ebamr PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_D
 
 target_sources(ebamr
      PRIVATE
-          kernels.H
+          Kernels.H
+          Reconstruction.H
+          FluxSplit.H
+          Diffusion.H
 )

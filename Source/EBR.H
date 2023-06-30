@@ -1,7 +1,7 @@
 #ifndef EBR_H_
 #define EBR_H_
 
-#include <ebr_prob.H>
+#include <prob.H>
 
 #include <AMReX_AmrLevel.H>
 #include <AMReX_EBFluxRegister.H>

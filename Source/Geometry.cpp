@@ -3,9 +3,6 @@
 
 #include <AMReX_ParmParse.H>
 
-#include <cmath>
-#include <algorithm>
-
 using namespace amrex;
 
 void
