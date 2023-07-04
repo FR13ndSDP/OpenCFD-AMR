@@ -45,6 +45,7 @@ option(OPTION_SYCL   "Enable SyCL"   OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Release)
 
 #
 # Setup Languages
@@ -110,7 +111,7 @@ target_include_directories(ebamr SYSTEM PUBLIC ${AMREX_SUBMOD_LOCATION}/Tools/C_
 if (OPTION_CUDA)
   setup_target_for_cuda_compilation(ebamr)
 endif ()
-target_link_libraries(ebamr PUBLIC amrex)
+target_link_libraries(ebamr PUBLIC AMReX::amrex)
 ########################### Summary ##################################
 include(AMReXGenexHelpers)
 include(AMReXTargetHelpers)
