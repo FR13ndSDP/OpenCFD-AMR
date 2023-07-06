@@ -18,3 +18,4 @@ target_sources(ebamr
 )
 
 add_subdirectory(kernel)
+add_subdirectory(EB)

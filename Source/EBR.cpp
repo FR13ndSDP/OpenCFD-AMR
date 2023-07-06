@@ -24,6 +24,7 @@ Real      EBR::cfl       = 0.3;
 bool      EBR::do_reflux = true;
 bool      EBR::do_visc = true;
 bool      EBR::do_gravity = false;
+int       EBR::eb_weights_type = 0;
 int       EBR::refine_max_dengrad_lev   = -1;
 Real      EBR::refine_dengrad           = 1.0e10;
 std::string EBR::time_integration       = "RK2";
@@ -376,6 +377,11 @@ EBR::read_params ()
 
     h_parm->Initialize();
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
+
+    pp.query("eb_weights_type", eb_weights_type);
+    if (eb_weights_type < 0 || eb_weights_type > 3) {
+        amrex::Abort("eb_weights_type must be 0,1,2 or 3");
+    }
 }
 
 void

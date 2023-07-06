@@ -124,6 +124,27 @@ protected:
                     amrex::Real dt, amrex::EBFluxRegister *fr_as_crse,
                     amrex::EBFluxRegister *fr_as_fine);
 
+  void eb_compute_dSdt_box (const amrex::Box& bx,
+                            Array4<Real const> const& s_arr,
+                            Array4<Real      > const& dsdt_arr,
+                            std::array<FArrayBox*, AMREX_SPACEDIM> const& flux,
+                            Array4<EBCellFlag const> const& flag,
+                            Array4<Real       const> const& vfrac,
+                            AMREX_D_DECL(Array4<Real const> const& apx,
+                                          Array4<Real const> const& apy,
+                                          Array4<Real const> const& apz),
+                            AMREX_D_DECL(Array4<Real const> const& fcx,
+                                          Array4<Real const> const& fcy,
+                                          Array4<Real const> const& fcz),
+                            Array4<Real       const> const& bcent,
+                            int as_crse,
+                            Array4<Real            > const& drho_as_crse,
+                            Array4<int        const> const& rrflag_as_crse,
+                            int as_fine,
+                            Array4<Real            > const& dm_as_fine,
+                            Array4<int        const> const& lev_mask,
+                            Real dt);
+
   // print total momentum and energy
   // only used when verbose>=2
   void printTotal() const;
@@ -160,6 +181,7 @@ protected:
   static bool do_reflux;
   static bool do_visc;
   static bool do_gravity;
+  static int eb_weights_type;
   static int refine_max_dengrad_lev;
   static amrex::Real refine_dengrad;
   static amrex::Vector<amrex::RealBox> refine_boxes;

@@ -194,14 +194,14 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
             const auto& flag = flags[mfi];
 
             if (flag.getType(bx) == FabType::covered) {
-                dSdt[mfi].setVal<RunOn::Gpu>(0.0, bx , 0, ncomp);
+                dSdt[mfi].setVal<RunOn::Device>(0.0, bx , 0, ncomp);
             } else {
                 // flux is used to store centroid flux needed for reflux
                 // for flux_x in x direction is nodal, in other directions centroid
                 // for flux_y in y ...
                 for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
                     flux[idim].resize(amrex::surroundingNodes(bx,idim),ncomp);
-                    flux[idim].setVal<RunOn::Gpu>(0.0);
+                    flux[idim].setVal<RunOn::Device>(0.0);
                 }
 
                 auto const& sfab = S.array(mfi);
@@ -211,7 +211,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                              auto const& fzfab = flux[2].array(););
 
                 // no cut cell around
-                if (flag.getType(amrex::grow(bx,1)) == FabType::regular)
+                if (flag.getType(amrex::grow(bx,NUM_GROW)) == FabType::regular)
                 {
                     // primitives, async arena
                     const Box& bxg = amrex::grow(bx,NUM_GROW);
@@ -225,7 +225,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     auto const& ql = qltmp.array();
                     auto const& qr = qrtmp.array();
 
-                    ParallelFor<NUM_THREADS>(bxg, 
+                    ParallelFor<NTHREADS>(bxg, 
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         c2prim(i,j,k,sfab,q,*lparm);
@@ -235,20 +235,20 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     int cdir = 0;
                     const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NUM_THREADS>(xflxbx, NPRIM,
+                    ParallelFor<NTHREADS>(xflxbx, NPRIM,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         reconstruction_x(i,j,k,n,ql,qr,q,*lparm);
                     });
 
-                    ParallelFor<NUM_THREADS>(xflxbx,
+                    ParallelFor<NTHREADS>(xflxbx,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         compute_flux_x(i,j,k,ql,qr,fxfab,*lparm);
                     });
 
                     if (do_visc) {
-                        ParallelFor<NUM_THREADS>(xflxbx,
+                        ParallelFor<NTHREADS>(xflxbx,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
                             compute_visc_x(i,j,k,q,fxfab,dxinv,*lparm);
@@ -259,20 +259,20 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     cdir = 1;
                     const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NUM_THREADS>(yflxbx, NPRIM,
+                    ParallelFor<NTHREADS>(yflxbx, NPRIM,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         reconstruction_y(i,j,k,n,ql,qr,q,*lparm);
                     });
 
-                    ParallelFor<NUM_THREADS>(yflxbx,
+                    ParallelFor<NTHREADS>(yflxbx,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         compute_flux_y(i,j,k,ql,qr,fyfab,*lparm);
                     });
 
                     if (do_visc) {
-                        ParallelFor<NUM_THREADS>(yflxbx,
+                        ParallelFor<NTHREADS>(yflxbx,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
                             compute_visc_y(i,j,k,q,fyfab,dxinv,*lparm);
@@ -283,27 +283,27 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     cdir = 2;
                     const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NUM_THREADS>(zflxbx, NPRIM,
+                    ParallelFor<NTHREADS>(zflxbx, NPRIM,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         reconstruction_z(i,j,k,n,ql,qr,q,*lparm);
                     });
 
-                    ParallelFor<NUM_THREADS>(zflxbx,
+                    ParallelFor<NTHREADS>(zflxbx,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         compute_flux_z(i,j,k,ql,qr,fzfab,*lparm);
                     });
 
                     if (do_visc) {
-                        ParallelFor<NUM_THREADS>(zflxbx,
+                        ParallelFor<NTHREADS>(zflxbx,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
                             compute_visc_z(i,j,k,q,fzfab,dxinv,*lparm);
                         });
                     }
 
-                    ParallelFor<NUM_THREADS>(bx, NCONS,
+                    ParallelFor<NTHREADS>(bx, NCONS,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         divop(i,j,k,n,dsdtfab,AMREX_D_DECL(fxfab, fyfab, fzfab), dxinv);
@@ -331,13 +331,13 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                         if (current) {
                         // update the lev/lev-1 flux register (index lev)
                             // for (int i=0; i<AMREX_SPACEDIM; i++)
-                                current->FineAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Gpu);
+                                current->FineAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
                         }
 
                         if (fine) {
                         // update the lev+1/lev flux register (index lev+1)
                             // for (int i=0; i<AMREX_SPACEDIM; i++)
-                                fine->CrseAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Gpu);
+                                fine->CrseAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
                         }
                     }
 #ifdef AMREX_USE_GPU
@@ -358,10 +358,28 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                         dm_as_fine.resize(amrex::grow(bx,1),ncomp);
                     }
 
-                    int as_fine = (fine != nullptr);
-                    int as_crse = (current != nullptr);
+                    int as_fine = (current != nullptr);
+                    int as_crse = (fine != nullptr);
 
-                    eb_compute_dSdt_box();
+                    Array4<Real const> const&    s_arr =    S.array(mfi);
+                    Array4<Real      > const& dsdt_arr = dSdt.array(mfi);
+
+                    Array4<Real const> vf_arr = (*volfrac).array(mfi);
+                    Array4<Real const> bcent_arr = (*bndrycent).array(mfi);
+
+                    AMREX_D_TERM(Array4<Real const> const& apx = areafrac[0]->const_array(mfi);,
+                                 Array4<Real const> const& apy = areafrac[1]->const_array(mfi);,
+                                 Array4<Real const> const& apz = areafrac[2]->const_array(mfi));
+                    AMREX_D_TERM(Array4<Real const> const& fcx = facecent[0]->const_array(mfi);,
+                                 Array4<Real const> const& fcy = facecent[1]->const_array(mfi);,
+                                 Array4<Real const> const& fcz = facecent[2]->const_array(mfi));
+
+                    eb_compute_dSdt_box(bx, s_arr, dsdt_arr, 
+                                       {&flux[0],&flux[1],&flux[2]}, 
+                                        flags.const_array(mfi), vf_arr,
+                                        apx, apy, apz, fcx, fcy, fcz, bcent_arr,
+                                        as_crse, p_drho_as_crse->array(), p_rrflag_as_crse->array(),
+                                        as_fine, dm_as_fine.array(), level_mask.const_array(mfi), dt);
 
                     if (fine) {
                         fine->CrseAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
@@ -369,7 +387,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                                             {&((*areafrac[0])[mfi]),
                                              &((*areafrac[1])[mfi]),
                                              &((*areafrac[2])[mfi])},
-                                            RunOn::Gpu);
+                                            RunOn::Device);
                     }
 
                     if (current) {
@@ -379,7 +397,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                                              &((*areafrac[1])[mfi]),
                                              &((*areafrac[2])[mfi])},
                                             dm_as_fine,
-                                            RunOn::Gpu);
+                                            RunOn::Device);
                     }
                 }
             }

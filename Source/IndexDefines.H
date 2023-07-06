@@ -15,6 +15,6 @@
 #define QPRES  4
 #define NPRIM  5
 
-#define NUM_THREADS 256
+#define NTHREADS 256
 
 #endif

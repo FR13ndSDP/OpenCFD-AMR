@@ -7,11 +7,6 @@
 #include <algorithm>
 #include <cmath>
 
-void eb_compute_dSdt_box()
-{
-
-}
-
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
