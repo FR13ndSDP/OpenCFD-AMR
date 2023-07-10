@@ -1,4 +1,4 @@
-max_step  = 1000
+max_step  = 400
 stop_time = 0.01
 
 geometry.is_periodic = 0 0 1
@@ -26,7 +26,7 @@ amr.loadbalance_level0_int = 1000
 
 # REFINEMENT / REGRIDDING 
 amr.check_input     = 1       # 
-amr.max_level       = 1       # maximum level number allowed
+amr.max_level       = 2       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 10 20 40 80 160 # how often to regrid
 amr.blocking_factor = 8
@@ -53,9 +53,9 @@ ebr.do_visc = false
 
 # EB parameters
 ebr.eb_weights_type = 0
-eb2.geom_type = box
-eb2.box_lo = 0.625 -1.0 -1.0
-eb2.box_hi = 4.0 0.3125  1.0
+eb2.geom_type = plane
+eb2.plane_point = 2.0 0.2 0.0625
+eb2.plane_normal = 0.5 -1 0
 eb2.box_has_fluid_inside = 0
 
 # Error handling

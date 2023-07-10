@@ -91,6 +91,9 @@ EBR::initData ()
     const auto geomdata = geom.data();
     MultiFab& S_new = get_new_data(State_Type);
 
+    auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S_new.Factory());
+    auto const& flags = fact.getMultiEBCellFlagFab();
+
     Parm const* lparm = d_parm;
     ProbParm const* lprobparm = d_prob_parm;
 
@@ -102,11 +105,13 @@ EBR::initData ()
         const Box& box = mfi.validbox();
         auto sfab = S_new.array(mfi);
 
+        const auto& flag_array = flags.const_array(mfi);
+
         amrex::ParallelFor(box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             // This is in EXE files
-            ebr_initdata(i, j, k, sfab, geomdata, *lparm, *lprobparm);
+            ebr_initdata(i, j, k, sfab, geomdata, flag_array, *lparm, *lprobparm);
         });
     }
 }

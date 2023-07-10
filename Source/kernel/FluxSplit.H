@@ -2,8 +2,11 @@
 #define FLUXSPLIT_H
 
 
+#include "AMReX_GpuPrint.H"
+#include "AMReX_GpuQualifiers.H"
 #include <Constants.H>
 #include <IndexDefines.H>
+#include <cstdio>
 
 // Steger-Warming
 AMREX_GPU_DEVICE
@@ -179,6 +182,12 @@ compute_flux_z (int i, int j, int k,
     fz(i,j,k,UMY)   =   fp[UMY]+fm[UMY];
     fz(i,j,k,UMZ)   =   fp[UMX]+fm[UMX];
     fz(i,j,k,UEDEN) =   fp[UEDEN]+fm[UEDEN];
+
+// #if AMREX_USE_GPU
+//     AMREX_DEVICE_PRINTF("flux_z : %f, %f, %f, %f, %f\n", fz(i,j,k,URHO), fz(i,j,k,UMX), fz(i,j,k,UMY), fz(i,j,k,UMZ), fz(i,j,k,UEDEN));
+// #else
+//   std::printf("flux_z : %f, %f, %f, %f, %f\n", fz(i,j,k,URHO), fz(i,j,k,UMX), fz(i,j,k,UMY), fz(i,j,k,UMZ), fz(i,j,k,UEDEN));
+// #endif
 }
 
 #endif

@@ -321,7 +321,10 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                             dsdtfab(i,j,k,irhoE) += g * sfab(i,j,k,imz);
                         });
                     }
-
+#ifdef AMREX_USE_GPU
+                    // sync here to avoid out of if loop synchronize
+                    Gpu::streamSynchronize();
+#endif
                     // TODO: reflux for EB is too complicated!
                     if (do_reflux)
                     {
@@ -340,10 +343,6 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                                 fine->CrseAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
                         }
                     }
-#ifdef AMREX_USE_GPU
-                    // sync here to avoid out of if loop synchronize
-                    Gpu::streamSynchronize();
-#endif
                 }
                 else
                 {
@@ -367,12 +366,12 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     Array4<Real const> vf_arr = (*volfrac).array(mfi);
                     Array4<Real const> bcent_arr = (*bndrycent).array(mfi);
 
-                    AMREX_D_TERM(Array4<Real const> const& apx = areafrac[0]->const_array(mfi);,
-                                 Array4<Real const> const& apy = areafrac[1]->const_array(mfi);,
-                                 Array4<Real const> const& apz = areafrac[2]->const_array(mfi));
-                    AMREX_D_TERM(Array4<Real const> const& fcx = facecent[0]->const_array(mfi);,
-                                 Array4<Real const> const& fcy = facecent[1]->const_array(mfi);,
-                                 Array4<Real const> const& fcz = facecent[2]->const_array(mfi));
+                    Array4<Real const> const& apx = areafrac[0]->const_array(mfi);
+                    Array4<Real const> const& apy = areafrac[1]->const_array(mfi);
+                    Array4<Real const> const& apz = areafrac[2]->const_array(mfi);
+                    Array4<Real const> const& fcx = facecent[0]->const_array(mfi);
+                    Array4<Real const> const& fcy = facecent[1]->const_array(mfi);
+                    Array4<Real const> const& fcz = facecent[2]->const_array(mfi);
 
                     eb_compute_dSdt_box(bx, s_arr, dsdt_arr, 
                                        {&flux[0],&flux[1],&flux[2]}, 
@@ -381,26 +380,31 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                                         as_crse, p_drho_as_crse->array(), p_rrflag_as_crse->array(),
                                         as_fine, dm_as_fine.array(), level_mask.const_array(mfi), dt);
 
-                    if (fine) {
-                        fine->CrseAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
-                                            (*volfrac)[mfi],
-                                            {&((*areafrac[0])[mfi]),
-                                             &((*areafrac[1])[mfi]),
-                                             &((*areafrac[2])[mfi])},
-                                            RunOn::Device);
-                    }
+                    if (do_reflux) {
+                        if (fine) {
+                            fine->CrseAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
+                                                (*volfrac)[mfi],
+                                                {&((*areafrac[0])[mfi]),
+                                                &((*areafrac[1])[mfi]),
+                                                &((*areafrac[2])[mfi])},
+                                                RunOn::Device);
+                        }
 
-                    if (current) {
-                        current->FineAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
-                                            (*volfrac)[mfi],
-                                            {&((*areafrac[0])[mfi]),
-                                             &((*areafrac[1])[mfi]),
-                                             &((*areafrac[2])[mfi])},
-                                            dm_as_fine,
-                                            RunOn::Device);
+                        if (current) {
+                            current->FineAdd(mfi, {&flux[0],&flux[1],&flux[2]}, dx,dt,
+                                                (*volfrac)[mfi],
+                                                {&((*areafrac[0])[mfi]),
+                                                &((*areafrac[1])[mfi]),
+                                                &((*areafrac[2])[mfi])},
+                                                dm_as_fine,
+                                                RunOn::Device);
+                        }
                     }
                 }
             }
+#ifdef AMREX_USE_GPU
+            Gpu::streamSynchronize();
+#endif 
         }
     }
 }
