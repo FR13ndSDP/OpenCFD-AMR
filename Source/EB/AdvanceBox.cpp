@@ -85,10 +85,10 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     // x-direction
     int cdir = 0;
     const Box& xflxbx = amrex::surroundingNodes(bx,cdir);
-    ParallelFor(xflxbx,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+    ParallelFor(xflxbx, NPRIM,
+    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-        eb_recon_x(i, j, k, ql, qr, q, flag, *lparm);
+        eb_recon_x(i, j, k, n, ql, qr, q, flag, *lparm);
     });
 
     ParallelFor(xflxbx,
@@ -100,10 +100,10 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     // y-direction
     cdir = 1;
     const Box& yflxbx = amrex::surroundingNodes(bx,cdir);
-    ParallelFor(yflxbx,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+    ParallelFor(yflxbx, NPRIM,
+    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-        eb_recon_y(i, j, k, ql, qr, q, flag, *lparm);
+        eb_recon_y(i, j, k, n, ql, qr, q, flag, *lparm);
     });
 
     ParallelFor(yflxbx,
@@ -115,10 +115,10 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     // z-direction
     cdir = 2;
     const Box& zflxbx = amrex::surroundingNodes(bx,cdir);
-    ParallelFor(zflxbx,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+    ParallelFor(zflxbx, NPRIM,
+    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-        eb_recon_z(i, j, k, ql, qr, q, flag, *lparm);
+        eb_recon_z(i, j, k, n, ql, qr, q, flag, *lparm);
     });
 
     ParallelFor(zflxbx,

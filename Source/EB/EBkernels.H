@@ -8,20 +8,19 @@
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void eb_recon_x(int i, int j, int k, amrex::Array4<amrex::Real> const &ql,
-              amrex::Array4<amrex::Real> const &qr,
-              amrex::Array4<amrex::Real const> const &q,
-              amrex::Array4<amrex::EBCellFlag const> const &flag,
-              Parm const &parm) noexcept {
+void eb_recon_x(int i, int j, int k, int n,
+                amrex::Array4<amrex::Real> const &ql,
+                amrex::Array4<amrex::Real> const &qr,
+                amrex::Array4<amrex::Real const> const &q,
+                amrex::Array4<amrex::EBCellFlag const> const &flag,
+                Parm const &parm) noexcept {
   if (flag(i,j,k).isConnected(-1,0,0)) {
-    for (int n = 0; n < NPRIM; ++n) {
-      ql(i, j, k, n) = q(i - 1, j, k, n);
-      qr(i, j, k, n) = q(i, j, k, n);
-      if (flag(i, j, k).isConnected(-2, 0, 0)) {
-          ql(i,j,k,n) = q(i-1,j,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i-1,j,k,n), q(i-1,j,k,n)-q(i-2,j,k,n));
-          if (flag(i,j,k).isConnected(1,0,0)) {
-            qr(i,j,k,n) = q(i,j,k,n) + amrex::Real(0.5)*minmod(q(i+1,j,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i-1,j,k,n));
-          }
+    ql(i, j, k, n) = q(i - 1, j, k, n);
+    qr(i, j, k, n) = q(i, j, k, n);
+    if (flag(i, j, k).isConnected(-2, 0, 0)) {
+      ql(i,j,k,n) = q(i-1,j,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i-1,j,k,n), q(i-1,j,k,n)-q(i-2,j,k,n));
+      if (flag(i,j,k).isConnected(1,0,0)) {
+        qr(i,j,k,n) = q(i,j,k,n) + amrex::Real(0.5)*minmod(q(i+1,j,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i-1,j,k,n));
       }
     }
   }
@@ -29,20 +28,19 @@ void eb_recon_x(int i, int j, int k, amrex::Array4<amrex::Real> const &ql,
   
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void eb_recon_y(int i, int j, int k, amrex::Array4<amrex::Real> const &ql,
-              amrex::Array4<amrex::Real> const &qr,
-              amrex::Array4<amrex::Real const> const &q,
-              amrex::Array4<amrex::EBCellFlag const> const &flag,
-              Parm const &parm) noexcept {
+void eb_recon_y(int i, int j, int k, int n,
+                amrex::Array4<amrex::Real> const &ql,
+                amrex::Array4<amrex::Real> const &qr,
+                amrex::Array4<amrex::Real const> const &q,
+                amrex::Array4<amrex::EBCellFlag const> const &flag,
+                Parm const &parm) noexcept {
   if (flag(i,j,k).isConnected(0,-1,0)) {
-    for (int n = 0; n < NPRIM; ++n) {
-      ql(i, j, k, n) = q(i, j-1, k, n);
-      qr(i, j, k, n) = q(i, j, k, n);
-      if (flag(i, j, k).isConnected(0, -2, 0)) {
-          ql(i,j,k,n) = q(i,j-1,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j-1,k,n), q(i,j-1,k,n)-q(i,j-2,k,n));
-          if (flag(i,j,k).isConnected(0,1,0)) {
-            qr(i,j,k,n) = q(i,j,k,n) + amrex::Real(0.5)*minmod(q(i,j+1,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j-1,k,n));
-          }
+    ql(i, j, k, n) = q(i, j-1, k, n);
+    qr(i, j, k, n) = q(i, j, k, n);
+    if (flag(i, j, k).isConnected(0, -2, 0)) {
+      ql(i,j,k,n) = q(i,j-1,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j-1,k,n), q(i,j-1,k,n)-q(i,j-2,k,n));
+      if (flag(i,j,k).isConnected(0,1,0)) {
+        qr(i,j,k,n) = q(i,j,k,n) + amrex::Real(0.5)*minmod(q(i,j+1,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j-1,k,n));
       }
     }
   }
@@ -50,20 +48,19 @@ void eb_recon_y(int i, int j, int k, amrex::Array4<amrex::Real> const &ql,
   
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void eb_recon_z(int i, int j, int k, amrex::Array4<amrex::Real> const &ql,
-              amrex::Array4<amrex::Real> const &qr,
-              amrex::Array4<amrex::Real const> const &q,
-              amrex::Array4<amrex::EBCellFlag const> const &flag,
-              Parm const &parm) noexcept {
+void eb_recon_z(int i, int j, int k, int n,
+                amrex::Array4<amrex::Real> const &ql,
+                amrex::Array4<amrex::Real> const &qr,
+                amrex::Array4<amrex::Real const> const &q,
+                amrex::Array4<amrex::EBCellFlag const> const &flag,
+                Parm const &parm) noexcept {
   if (flag(i,j,k).isConnected(0,0,-1)) {
-    for (int n = 0; n < NPRIM; ++n) {
-      ql(i, j, k, n) = q(i, j, k-1, n);
-      qr(i, j, k, n) = q(i, j, k, n);
-      if (flag(i, j, k).isConnected(0, 0, -2)) {
-          ql(i,j,k,n) = q(i,j,k-1,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j,k-1,n), q(i,j,k-1,n)-q(i,j,k-2,n));
-          if (flag(i,j,k).isConnected(0,0,1)) {
-            qr(i,j,k,n) = q(i,j,k,n) + amrex::Real(0.5)*minmod(q(i,j,k+1,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j,k-1,n));
-          }
+    ql(i, j, k, n) = q(i, j, k-1, n);
+    qr(i, j, k, n) = q(i, j, k, n);
+    if (flag(i, j, k).isConnected(0, 0, -2)) {
+      ql(i,j,k,n) = q(i,j,k-1,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j,k-1,n), q(i,j,k-1,n)-q(i,j,k-2,n));
+      if (flag(i,j,k).isConnected(0,0,1)) {
+        qr(i,j,k,n) = q(i,j,k,n) + amrex::Real(0.5)*minmod(q(i,j,k+1,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j,k-1,n));
       }
     }
   }
