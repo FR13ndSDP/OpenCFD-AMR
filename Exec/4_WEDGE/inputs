@@ -1,4 +1,4 @@
-max_step  = 400
+max_step  = 100
 stop_time = 0.01
 
 geometry.is_periodic = 0 0 1
@@ -52,7 +52,8 @@ ebr.time_integration = RK3
 ebr.do_visc = false
 
 # EB parameters
-ebr.eb_weights_type = 0
+ebr.do_redistribute = true
+ebr.frac_threshold = 0.0
 eb2.geom_type = plane
 eb2.plane_point = 2.0 0.2 0.0625
 eb2.plane_normal = 0.5 -1 0

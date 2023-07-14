@@ -20,9 +20,9 @@ struct FillExtDir
 
         const BCRec& bc = bcr[bcomp+0];
 
-        AMREX_D_TERM(int i = iv[0];,
-                        int j = iv[1];,
-                        int k = iv[2];);
+        int i = iv[0];
+        int j = iv[1];
+        int k = iv[2];
 
         if (bc.lo(0) == BCType::ext_dir and i < domain_box.smallEnd(0))
         {

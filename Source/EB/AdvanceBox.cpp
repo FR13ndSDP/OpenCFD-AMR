@@ -25,12 +25,8 @@ EBR::eb_compute_dSdt_box (const Box& bx,
                           Array4<Real       const> const& fcy,
                           Array4<Real       const> const& fcz,
                           Array4<Real       const> const& bcent,
-                          int as_crse,
-                          Array4<Real            > const& drho_as_crse,
-                          Array4<int        const> const& rrflag_as_crse,
-                          int as_fine,
+                          int as_crse, int as_fine,
                           Array4<Real            > const& dm_as_fine,
-                          Array4<int        const> const& lev_mask,
                           Real dt)
 {
     BL_PROFILE("EBR::eb_compute_dSdt_box()");
@@ -39,6 +35,20 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     const Box& bxg = amrex::grow(bx,NUM_GROW);
 
     const auto dxinv = geom.InvCellSizeArray();
+
+    // Quantities for redistribution
+    FArrayBox divc,redistwgt;
+    divc.resize(bx,NCONS);
+    redistwgt.resize(bx,1);
+
+    // Set to zero just in case
+    divc.setVal<RunOn::Device>(0.0);
+    redistwgt.setVal<RunOn::Device>(0.0);
+
+    // Because we are going to redistribute, we put the divergence into divc
+    //    rather than directly into dsdt_arr
+    auto const& divc_arr = divc.array();
+    auto const& redistwgt_arr = redistwgt.array();
 
     // Primitive variables
     FArrayBox qtmp(bxg, NPRIM, The_Async_Arena());
@@ -53,17 +63,18 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     auto const& ql = qltmp.array();
     auto const& qr = qrtmp.array();
 
-    AMREX_D_TERM(auto const& fxfab = flux[0]->array();,
-                 auto const& fyfab = flux[1]->array();,
-                 auto const& fzfab = flux[2]->array(););
+    auto const& fxfab = flux[0]->array();
+    auto const& fyfab = flux[1]->array();
+    auto const& fzfab = flux[2]->array();
 
     Parm const* lparm = d_parm;
 
-    // Initialize dsdt
+    // Initialize
     ParallelFor(bx, NCONS,
     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
         dsdt_arr(i,j,k,n) = Real(0.0);
+        divc_arr(i,j,k,n) = Real(0.0);
     });
 
     // Initialize dm_as_fine to 0
@@ -88,7 +99,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     ParallelFor(xflxbx, NPRIM,
     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-        eb_recon_x(i, j, k, n, ql, qr, q, flag, *lparm);
+        eb_recon_x(i, j, k, n, vfrac,ql, qr, q, flag, *lparm);
     });
 
     ParallelFor(xflxbx,
@@ -103,7 +114,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     ParallelFor(yflxbx, NPRIM,
     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-        eb_recon_y(i, j, k, n, ql, qr, q, flag, *lparm);
+        eb_recon_y(i, j, k, n, vfrac, ql, qr, q, flag, *lparm);
     });
 
     ParallelFor(yflxbx,
@@ -118,7 +129,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     ParallelFor(zflxbx, NPRIM,
     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-        eb_recon_z(i, j, k, n, ql, qr, q, flag, *lparm);
+        eb_recon_z(i, j, k, n, vfrac, ql, qr, q, flag, *lparm);
     });
 
     ParallelFor(zflxbx,
@@ -130,12 +141,33 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     ParallelFor(bx, NCONS,
     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
     {
-       eb_compute_div(i,j,k,n,q,dsdt_arr,
+       eb_compute_div(i,j,k,n,q, divc_arr,
                       fxfab, fyfab, fzfab,
                       flag, vfrac, bcent,
                       apx, apy, apz,
                       fcx, fcy, fcz, dxinv, *lparm);
     });
+
+    if (do_redistribute) {
+        auto const &lo = bx.smallEnd();
+        auto const &hi = bx.bigEnd();
+        // Now do redistribution
+        ParallelFor(bx, NCONS,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+        {
+            if (vfrac(i,j,k) < 1.0 && vfrac(i,j,k) > 0.0) {
+                flux_redist(i,j,k,n,lo,hi,dsdt_arr,divc_arr,flag, vfrac);
+            } else {
+                dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
+            }
+        });
+    } else {
+        ParallelFor(bx, NCONS,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+        {
+            dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
+        });
+    }
 
     if (do_gravity) {
         const Real g = -9.8;
@@ -153,4 +185,10 @@ EBR::eb_compute_dSdt_box (const Box& bx,
 #ifdef AMREX_USE_GPU
     Gpu::streamSynchronize();
 #endif
+}
+
+// TODO: implement state redistribution
+void EBR::state_redist(MultiFab& State, int ng)
+{
+
 }

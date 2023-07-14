@@ -24,10 +24,12 @@ minmod(amrex::Real const a, amrex::Real const b)
 // void
 // reconstruction_x (int i, int j, int k, int n,
 //              amrex::Array4<amrex::Real> const& ql,
+//              amrex::Array4<amrex::Real> const& qr,
 //              amrex::Array4<amrex::Real const> const& q,
 //              Parm const& parm) noexcept
 // {
 //     ql(i,j,k,n) = q(i-1,j,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i-1,j,k,n), q(i-1,j,k,n)-q(i-2,j,k,n));
+//     qr(i,j,k,n) = q(i,j,k,n) - amrex::Real(0.5)*minmod(q(i+1,j,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i-1,j,k,n));
 // }
 
 // AMREX_GPU_DEVICE
@@ -35,10 +37,12 @@ minmod(amrex::Real const a, amrex::Real const b)
 // void
 // reconstruction_y (int i, int j, int k, int n,
 //              amrex::Array4<amrex::Real> const& ql,
+//              amrex::Array4<amrex::Real> const& qr,
 //              amrex::Array4<amrex::Real const> const& q,
 //              Parm const& parm) noexcept
 // {
 //     ql(i,j,k,n) = q(i,j-1,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j-1,k,n), q(i,j-1,k,n)-q(i,j-2,k,n));
+//     qr(i,j,k,n) = q(i,j,k,n) - amrex::Real(0.5)*minmod(q(i,j+1,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j-1,k,n));
 // }
 
 // AMREX_GPU_DEVICE
@@ -46,10 +50,12 @@ minmod(amrex::Real const a, amrex::Real const b)
 // void
 // reconstruction_z (int i, int j, int k, int n,
 //              amrex::Array4<amrex::Real> const& ql,
+//              amrex::Array4<amrex::Real> const& qr,
 //              amrex::Array4<amrex::Real const> const& q,
 //              Parm const& parm) noexcept
 // {
 //     ql(i,j,k,n) = q(i,j,k-1,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j,k-1,n), q(i,j,k-1,n)-q(i,j,k-2,n));
+//     ql(i,j,k,n) = q(i,j,k,n) - amrex::Real(0.5)*minmod(q(i,j,k+1,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j,k-1,n));
 // }
 
 // 5th order WENO-Z

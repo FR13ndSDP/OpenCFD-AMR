@@ -23,9 +23,9 @@ struct FillExtDir
         const Real* prob_lo = geom.ProbLo();
         const Real* dx      = geom.CellSize();
 
-        AMREX_D_TERM(int i = iv[0];,
-                        int j = iv[1];,
-                        int k = iv[2];);
+        int i = iv[0];
+        int j = iv[1];
+        int k = iv[2];
 
         Real x = prob_lo[0] + (i+Real(0.5))*dx[0];
         Real z = prob_lo[2] + (k+Real(0.5))*dx[2];

@@ -27,6 +27,19 @@ void EBR::writePlotFile(const std::string &dir, std::ostream &os, VisMF::How how
     AmrLevel::writePlotFile(dir, os, how);
 }
 
+// void EBR::writeHDF5PlotFile (const std::string &plotfilename,
+//                                   int nlevels,
+//                                   const Vector<const MultiFab*> &mf,
+//                                   const Vector<std::string> &varnames,
+//                                   const Vector<Geometry> &geom,
+//                                   Real time,
+//                                   const Vector<int> &level_steps,
+//                                   const Vector<IntVect> &ref_ratio,
+//                                   const std::string &compression);
+// {
+//     WriteMultiLevelPlotfileHDF5();
+// }
+
 void EBR::printState(const MultiFab &mf)
 {
     const IntVect ng(2, 2, 2);

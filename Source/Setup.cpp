@@ -120,9 +120,9 @@ void ebr_dervel (const Box& bx, FArrayBox& velfab, int dcomp, int ncomp,
     amrex::ParallelFor(bx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
-        AMREX_D_TERM(vel(i,j,k,dcomp  ) = dat(i,j,k,UMX)/dat(i,j,k,URHO);,
-                     vel(i,j,k,dcomp+1) = dat(i,j,k,UMY)/dat(i,j,k,URHO);,
-                     vel(i,j,k,dcomp+2) = dat(i,j,k,UMZ)/dat(i,j,k,URHO);)
+        vel(i,j,k,dcomp  ) = dat(i,j,k,UMX)/dat(i,j,k,URHO);
+        vel(i,j,k,dcomp+1) = dat(i,j,k,UMY)/dat(i,j,k,URHO);
+        vel(i,j,k,dcomp+2) = dat(i,j,k,UMZ)/dat(i,j,k,URHO);
     });
 }
 

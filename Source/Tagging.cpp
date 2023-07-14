@@ -66,7 +66,6 @@ EBR::errorEst (TagBoxArray& tags, int, int, Real time, int, int)
             const Box& bx = mfi.tilebox();
             const auto rhofab = (*rho)[mfi].array();
             auto tag = tags.array(mfi);
-            // TODO: flag not used.
             const auto& flag = flags[mfi];
 
             if (flag.getType(bx) != FabType::covered)

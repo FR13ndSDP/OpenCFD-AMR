@@ -25,6 +25,8 @@ struct Parm
     amrex::Real twoThirds = 2.0/3.0;
     amrex::Real oneSix = 1.0/6.0;
 
+    amrex::Real frac_t = 0.1;   // eb small cell volume fraction threshold
+
     void Initialize ();
 };
 

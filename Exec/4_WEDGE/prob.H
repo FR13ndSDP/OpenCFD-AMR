@@ -12,7 +12,8 @@ AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
 ebr_initdata (int i, int j, int k, amrex::Array4<amrex::Real> const& state,
-              amrex::GeometryData const& /*geomdata*/, amrex::Array4<amrex::EBCellFlag const> const& flag,
+              amrex::GeometryData const& /*geomdata*/,amrex::Array4<amrex::Real const> const& vfrac, 
+              amrex::Array4<amrex::EBCellFlag const> const& flag,
               Parm const& parm, ProbParm const& prob_parm)
 {
     using amrex::Real;
@@ -21,7 +22,7 @@ ebr_initdata (int i, int j, int k, amrex::Array4<amrex::Real> const& state,
     Pt = prob_parm.p_l;
     rhot = prob_parm.rho_l;
     uxt = prob_parm.u_l;
-    if (flag(i,j,k).isCovered()) {
+    if (flag(i,j,k).isCovered() || vfrac(i,j,k) <= parm.frac_t) {
         state(i,j,k,URHO ) = rhot;
         state(i,j,k,UMX  ) = Real(0.0);
         state(i,j,k,UMY  ) = Real(0.0);

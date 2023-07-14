@@ -53,10 +53,6 @@ Real EBR::estTimeStep()
     const MultiFab& S = get_new_data(State_Type);
     Parm const* lparm = d_parm;
 
-    // TODO: consider EB
-    // auto const& fact = dynamic_cast<EBFArrayBoxFactory const&>(S.Factory());
-    // auto const& flags = fact.getMultiEBCellFlagFab();
-
     Real estdt = amrex::ReduceMin(S, 0,
     [=] AMREX_GPU_HOST_DEVICE (Box const& bx, Array4<Real const> const& fab) -> Real
     {
@@ -100,10 +96,6 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
     {
         current = &flux_reg;
     }
-
-    // TODO: Use implicit time integration
-    // TODO: use spectral deferred correction method
-    // TODO: or consider using builtin RK3/4 interface to maintain accuracy
 
     // add Euler here for debug
     if (time_integration == "Euler")
@@ -156,7 +148,9 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
         [&] (int /*stage*/, MultiFab& dSdt, MultiFab const& S,
                 Real /*t*/, Real dtsub) {
             compute_dSdt(S, dSdt, dtsub, fine, current);
-        });
+        },
+        // TODO: implement state redistribution
+       [&] (int /*stage*/, MultiFab& S) { state_redist(S,0); });
     }
     return dt;
 }
@@ -182,8 +176,6 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
 #endif
     {
         FArrayBox dm_as_fine(Box::TheUnitBox(), ncomp);
-        FArrayBox fab_drho_as_crse(Box::TheUnitBox(), ncomp);
-        IArrayBox fab_rrflag_as_crse(Box::TheUnitBox());
 
         GpuArray<FArrayBox,AMREX_SPACEDIM> flux;
 
@@ -206,9 +198,9 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
 
                 auto const& sfab = S.array(mfi);
                 auto const& dsdtfab = dSdt.array(mfi);
-                AMREX_D_TERM(auto const& fxfab = flux[0].array();,
-                             auto const& fyfab = flux[1].array();,
-                             auto const& fzfab = flux[2].array(););
+                auto const& fxfab = flux[0].array();
+                auto const& fyfab = flux[1].array();
+                auto const& fzfab = flux[2].array();
 
                 // no cut cell around
                 if (flag.getType(amrex::grow(bx,NUM_GROW)) == FabType::regular)
@@ -348,11 +340,6 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                 {
                     // cut cells and its neighbor
 
-                    FArrayBox* p_drho_as_crse = (fine) ?
-                            fine->getCrseData(mfi) : &fab_drho_as_crse;
-                    const IArrayBox* p_rrflag_as_crse = (fine) ?
-                        fine->getCrseFlag(mfi) : &fab_rrflag_as_crse;
-
                     if (current) {
                         dm_as_fine.resize(amrex::grow(bx,1),ncomp);
                     }
@@ -377,8 +364,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                                        {&flux[0],&flux[1],&flux[2]}, 
                                         flags.const_array(mfi), vf_arr,
                                         apx, apy, apz, fcx, fcy, fcz, bcent_arr,
-                                        as_crse, p_drho_as_crse->array(), p_rrflag_as_crse->array(),
-                                        as_fine, dm_as_fine.array(), level_mask.const_array(mfi), dt);
+                                        as_crse, as_fine, dm_as_fine.array(), dt);
 
                     if (do_reflux) {
                         if (fine) {
