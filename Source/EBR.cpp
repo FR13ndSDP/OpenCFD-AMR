@@ -25,6 +25,11 @@ bool      EBR::do_reflux = true;
 bool      EBR::do_visc = true;
 bool      EBR::do_gravity = false;
 bool      EBR::do_redistribute = false;
+bool      EBR::IO_HDF5 = false;
+int       EBR::plot_int = -1;
+std::string EBR::plot_file = "plt";
+Real      EBR::stop_time = 0.0;
+int       EBR::max_step = -1;
 int       EBR::refine_max_dengrad_lev   = -1;
 Real      EBR::refine_dengrad           = 1.0e10;
 std::string EBR::time_integration       = "RK2";
@@ -115,6 +120,12 @@ EBR::initData ()
             ebr_initdata(i, j, k, sfab, geomdata, vf_arr, flag_array, *lparm, *lprobparm);
         });
     }
+
+#ifdef AMREX_USE_HDF5
+    if (IO_HDF5) {
+        writeHDF5PlotFile(0, 0.0);
+    }
+#endif
 }
 
 void EBR::buildMetrics()
@@ -281,6 +292,17 @@ EBR::postCoarseTimeStep (Real time)
     if (verbose >= 2) {
         printTotal();
     }
+
+#ifdef AMREX_USE_HDF5
+    if (IO_HDF5) {
+        // the step after one step
+        int step = parent->levelSteps(0);
+
+        if (step%plot_int == 0 || time == stop_time || step == max_step) {
+            writeHDF5PlotFile(step, time);
+        }
+    }
+#endif
 }
 
 void
@@ -354,6 +376,10 @@ EBR::read_params ()
 
     pp.query("do_visc", do_visc);
 
+    pp.query("IO_HDF5", IO_HDF5);
+    pp.query("plot_int", plot_int);
+    pp.query("plot_file", plot_file);
+
     pp.query("refine_max_dengrad_lev", refine_max_dengrad_lev);
     pp.query("refine_dengrad", refine_dengrad);
     pp.query("refine_cutcells", refine_cutcells);
@@ -378,6 +404,10 @@ EBR::read_params ()
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
 
     pp.query("do_redistribute", do_redistribute);
+
+    ParmParse pg;
+    pg.query("stop_time",stop_time);
+    pg.query("max_step",max_step);
 }
 
 void

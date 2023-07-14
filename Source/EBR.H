@@ -41,15 +41,7 @@ public:
   virtual void writePlotFile(const std::string &dir, std::ostream &os,
                              amrex::VisMF::How how) override;
 
-  // void writeHDF5PlotFile(const std::string &plotfilename,
-  //                        int nlevels,
-  //                        const Vector<const MultiFab*> &mf,
-  //                        const Vector<std::string> &varnames,
-  //                        const Vector<Geometry> &geom,
-  //                        Real time,
-  //                        const Vector<int> &level_steps,
-  //                        const Vector<IntVect> &ref_ratio,
-  //                        const std::string &compression);
+  void writeHDF5PlotFile(int step, Real time);
 
   // Initialize data on this level from another EBR (during regrid).
   virtual void init(amrex::AmrLevel &old) override;
@@ -183,6 +175,11 @@ protected:
   static bool do_visc;
   static bool do_gravity;
   static bool do_redistribute;
+  static bool IO_HDF5;
+  static int plot_int;
+  static std::string plot_file; 
+  static amrex::Real stop_time;
+  static int max_step;
   static int refine_max_dengrad_lev;
   static amrex::Real refine_dengrad;
   static amrex::Vector<amrex::RealBox> refine_boxes;

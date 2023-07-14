@@ -1,5 +1,9 @@
 #include <EBR.H>
 
+#ifdef AMREX_USE_HDF5
+#include <AMReX_PlotFileUtilHDF5.H>
+#endif
+
 using namespace amrex;
 
 void EBR::restart(Amr &papa, std::istream &is, bool bReadSpecial)
@@ -27,18 +31,35 @@ void EBR::writePlotFile(const std::string &dir, std::ostream &os, VisMF::How how
     AmrLevel::writePlotFile(dir, os, how);
 }
 
-// void EBR::writeHDF5PlotFile (const std::string &plotfilename,
-//                                   int nlevels,
-//                                   const Vector<const MultiFab*> &mf,
-//                                   const Vector<std::string> &varnames,
-//                                   const Vector<Geometry> &geom,
-//                                   Real time,
-//                                   const Vector<int> &level_steps,
-//                                   const Vector<IntVect> &ref_ratio,
-//                                   const std::string &compression);
-// {
-//     WriteMultiLevelPlotfileHDF5();
-// }
+#ifdef AMREX_USE_HDF5
+void EBR::writeHDF5PlotFile(int step, Real time)
+{
+    int nlevs = parent->finestLevel() + 1;
+    Vector<int> level_steps;
+    Vector<IntVect> ratio_list;
+    Vector<std::string> name_list;
+    Vector<MultiFab> mf_list(nlevs);
+    Vector<Geometry> geom_list;
+
+    for (int lev=0; lev<nlevs; ++lev)
+    {
+        EBR& this_level = getLevel(lev);
+        level_steps.push_back(parent->levelSteps(lev));
+        ratio_list.push_back({2,2,2});
+        geom_list.push_back(this_level.geom);
+        mf_list[lev] = MultiFab(this_level.boxArray(), this_level.dmap, NCONS, 0);
+        MultiFab::Copy(mf_list[lev], this_level.state[State_Type].newData(), 0, 0, NCONS, 0);
+    }
+
+    name_list = {"rho", "rhoU", "rhoV", "rhoW", "E"};
+
+    const std::string& pltfile = amrex::Concatenate(plot_file, step);
+    WriteMultiLevelPlotfileHDF5(pltfile, nlevs,
+                                GetVecOfConstPtrs(mf_list), name_list,
+                                geom_list, time,
+                                level_steps, ratio_list);
+}
+#endif
 
 void EBR::printState(const MultiFab &mf)
 {
