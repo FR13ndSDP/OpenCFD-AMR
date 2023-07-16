@@ -145,6 +145,12 @@ protected:
   
   void state_redist(amrex::MultiFab& state, int ng);
   
+#ifdef CHEM
+  void scalar_dSdt(const amrex::MultiFab &Spec, const amrex::MultiFab &S, amrex::MultiFab &dSdt,
+                    amrex::Real dt, amrex::EBFluxRegister *fr_as_crse,
+                    amrex::EBFluxRegister *fr_as_fine);
+#endif
+
   // print total momentum and energy
   // only used when verbose>=2
   void printTotal() const;
@@ -157,13 +163,21 @@ protected:
 
   amrex::EBFluxRegister flux_reg;
 
+  #ifdef CHEM
+  amrex::EBFluxRegister flux_reg_spec;
+  #endif
+
   // Max 7-th order stencil based scheme
   static constexpr int NUM_GROW = 4;
 
   // conservative states
   enum StateVariable { Density = 0, Xmom, Ymom, Zmom, Eden, NUM_STATE };
 
+#ifdef CHEM
+  enum StateType {State_Type = 0, Spec_Type = 1, NUM_STATE_TYPE};
+#else
   enum StateType { State_Type = 0, NUM_STATE_TYPE };
+#endif
 
   static amrex::BCRec phys_bc;
 
@@ -200,4 +214,12 @@ void ebr_bcfill (amrex::Box const& bx, amrex::FArrayBox& data,
                  amrex::Geometry const& geom, amrex::Real time,
                  const amrex::Vector<amrex::BCRec>& bcr, int bcomp,
                  int scomp);
+
+#ifdef CHEM
+void spec_bcfill (amrex::Box const& bx, amrex::FArrayBox& data,
+                 int dcomp, int numcomp,
+                 amrex::Geometry const& geom, amrex::Real time,
+                 const amrex::Vector<amrex::BCRec>& bcr, int bcomp,
+                 int scomp);
+#endif
 #endif

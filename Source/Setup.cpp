@@ -185,6 +185,28 @@ EBR::variableSetUp ()
     derive_lst.add("velocity",IndexType::TheCellType(),AMREX_SPACEDIM,
                    {AMREX_D_DECL("ux", "uy", "uz")}, ebr_dervel,the_same_box);
     derive_lst.addComponent("velocity",desc_lst,State_Type,Density,1+AMREX_SPACEDIM);
+
+#ifdef CHEM
+    desc_lst.addDescriptor(Spec_Type, IndexType::TheCellType(),
+                           StateDescriptor::Point, NUM_GROW, NSPECS,
+                         &eb_mf_cell_cons_interp);
+
+    Vector<BCRec>       spec_bcs(NSPECS);
+    Vector<std::string> spec_name(NSPECS);
+    BCRec spec_bc;
+    for (int n=0; n<NSPECS; ++n) {
+        set_scalar_bc(spec_bc,phys_bc); spec_bcs[n] = spec_bc; spec_name[n] = amrex::Concatenate("rho",n,1);
+    }
+
+    StateDescriptor::BndryFunc spec_bndryfunc(spec_bcfill);
+    spec_bndryfunc.setRunOnGPU(true);
+
+    desc_lst.setComponent(Spec_Type,
+                          SPEC_START,
+                          spec_name,
+                          spec_bcs,
+                          spec_bndryfunc);
+#endif
 }
 
 void

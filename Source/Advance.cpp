@@ -97,6 +97,33 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
         current = &flux_reg;
     }
 
+#ifdef CHEM
+    EBFluxRegister* fine_spec = nullptr; 
+    EBFluxRegister* current_spec = nullptr; 
+
+    if (do_reflux && level < parent->finestLevel())
+    {
+        EBR& fine_level = getLevel(level+1);
+        fine_spec = &fine_level.flux_reg_spec;
+        fine_spec->reset();
+    }
+
+    if (do_reflux && level > 0)
+    {
+        current_spec = &flux_reg_spec;
+    }
+
+    // do scalar transport
+    MultiFab& Spec_new = get_new_data(Spec_Type);
+    MultiFab Spec_border(grids, dmap, NSPECS, NUM_GROW, MFInfo(), Factory());
+    MultiFab dSdt_spec(grids, dmap, NSPECS, 0, MFInfo(), Factory());
+
+    FillPatch(*this, Spec_border, NUM_GROW, time, Spec_Type, 0, NSPECS);
+    FillPatch(*this, Sborder, NUM_GROW, time, State_Type, 0, NUM_STATE);
+    scalar_dSdt(Spec_border, Sborder, dSdt_spec, dt, fine_spec, current_spec);
+    MultiFab::LinComb(Spec_new, 1.0, Spec_border, 0, dt, dSdt_spec, 0, 0, NSPECS, 0);
+#endif
+
     // add Euler here for debug
     if (time_integration == "Euler")
     {
@@ -152,6 +179,11 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
         // TODO: implement state redistribution
        [&] (int /*stage*/, MultiFab& S) { state_redist(S,0); });
     }
+
+#ifdef CHEM
+// density fix
+
+#endif
     return dt;
 }
 

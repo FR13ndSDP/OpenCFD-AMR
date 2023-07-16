@@ -17,4 +17,10 @@
 
 #define NTHREADS 256
 
+#ifdef CHEM
+#define NSPECS 4 
+#define SPEC_START 0
+#define SPEC_END NSPECS-1
+#endif
+
 #endif
