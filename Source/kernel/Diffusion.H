@@ -15,8 +15,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
 {
     using amrex::Real;
     // first compute temperature
-    Real Tl = q(i,j,k,QPRES)/(parm.Rg * q(i,j,k,QRHO));
-    Real Tr = q(i-1,j,k,QPRES)/(parm.Rg * q(i-1,j,k,QRHO));
+    Real Tl = q(i,j,k,QT);
+    Real Tr = q(i-1,j,k,QT);
     // derive mu
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
@@ -57,8 +57,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
 {
     using amrex::Real;
     // first compute temperature
-    Real Tl = q(i,j,k,QPRES)/(parm.Rg * q(i,j,k,QRHO));
-    Real Tr = q(i,j-1,k,QPRES)/(parm.Rg * q(i,j-1,k,QRHO));
+    Real Tl = q(i,j,k,QT);
+    Real Tr = q(i,j-1,k,QT);
     // derive mu
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
@@ -99,8 +99,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
 {
     using amrex::Real;
     // first compute temperature
-    Real Tl = q(i,j,k,QPRES)/(parm.Rg * q(i,j,k,QRHO));
-    Real Tr = q(i,j,k-1,QPRES)/(parm.Rg * q(i,j,k-1,QRHO));
+    Real Tl = q(i,j,k,QT);
+    Real Tr = q(i,j,k-1,QT);
     // derive mu
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);

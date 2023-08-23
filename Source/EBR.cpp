@@ -149,10 +149,7 @@ EBR::initData ()
         amrex::ParallelFor(box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            sfab(i,j,k,0) = 0.1 * sfab_state(i,j,k,0);
-            sfab(i,j,k,1) = 0.8 * sfab_state(i,j,k,0);
-            sfab(i,j,k,2) = 0.05 * sfab_state(i,j,k,0);
-            sfab(i,j,k,3) = 0.05 * sfab_state(i,j,k,0);
+            ebr_initspec(i, j, k, sfab_state, sfab, geomdata);
         });
     }
 #endif
@@ -370,7 +367,7 @@ EBR::printTotal () const
 
 #ifdef CHEM
     const MultiFab& Spec_new = get_new_data(Spec_Type);
-    Array<Real,4> tot_spec;
+    Array<Real,NSPECS> tot_spec;
     for (int comp = 0; comp < NSPECS; ++comp) {
         MultiFab::Copy(mf, Spec_new, comp, 0, 1, 0);
         tot_spec[comp] = mf.sum(0,true) * geom.ProbSize();
@@ -382,7 +379,12 @@ EBR::printTotal () const
             amrex::Print().SetPrecision(17) << "\n[CHEM] Total spec0 is " << tot_spec[0] << "\n"
                                             <<   "       Total spec1 is " << tot_spec[1] << "\n"
                                             <<   "       Total spec2 is " << tot_spec[2] << "\n"
-                                            <<   "       Total spec3 is " << tot_spec[3] << "\n";
+                                            <<   "       Total spec3 is " << tot_spec[3] << "\n"
+                                            <<   "       Total spec4 is " << tot_spec[4] << "\n"
+                                            <<   "       Total spec5 is " << tot_spec[5] << "\n"
+                                            <<   "       Total spec6 is " << tot_spec[6] << "\n"
+                                            <<   "       Total spec7 is " << tot_spec[7] << "\n"
+                                            <<   "       Total spec8 is " << tot_spec[8] << "\n";
 #ifdef BL_LAZY
         });
 #endif
@@ -458,7 +460,6 @@ EBR::read_params ()
     pp.query("Pr"       , h_parm->Pr);
     pp.query("C_s"      , h_parm->C_s);
     pp.query("T_s"      , h_parm->T_s);
-    pp.query("frac_threshold"      , h_parm->frac_t);
 
     h_parm->Initialize();
     amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);

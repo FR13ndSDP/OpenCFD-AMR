@@ -52,8 +52,8 @@ ebr.time_integration = RK3
 ebr.do_visc = false
 
 # EB parameters
-ebr.do_redistribute = true
-ebr.frac_threshold = 0.0
+ebr.do_redistribute = false
+ebr.small_volfrac = 1e-10
 eb2.geom_type = plane
 eb2.plane_point = 2.0 0.2 0.0625
 eb2.plane_normal = 0.5 -1 0

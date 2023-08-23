@@ -1,11 +1,11 @@
-max_step  = 1000
-stop_time = 0.01
+max_step  = 3000
+stop_time = 0.02
 
 geometry.is_periodic = 0 0 1
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     =   0.0      0.0      0.0
-geometry.prob_hi     =   3.0      1.0      0.125
-amr.n_cell           =   192      64       8
+geometry.prob_hi     =   3.0      1.0      0.025
+amr.n_cell           =   240      80       2
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -26,11 +26,11 @@ amr.loadbalance_level0_int = 1000
 
 # REFINEMENT / REGRIDDING 
 amr.check_input     = 1       # 
-amr.max_level       = 1       # maximum level number allowed
+amr.max_level       = 0       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 10 20 40 80 160 # how often to regrid
-amr.blocking_factor = 8
-amr.max_grid_size   = 256
+amr.blocking_factor = 2
+amr.max_grid_size   = 64
 amr.n_error_buf     = 0 # number of buffer cells in error est
 amr.grid_eff        = 1     # what constitutes an efficient grid
 
@@ -52,10 +52,11 @@ ebr.time_integration = RK3
 ebr.do_visc = false
 
 # EB parameters
-ebr.eb_weights_type = 0
+ebr.do_redistribute = false
+ebr.small_volfrac = 1e-10
 eb2.geom_type = box
-eb2.box_lo = 0.625 -1.0 -1.0
-eb2.box_hi = 4.0 0.3125  1.0
+eb2.box_lo = 0.6 -1.0 -1.0
+eb2.box_hi = 4.0 0.2  1.0
 eb2.box_has_fluid_inside = 0
 
 # Error handling

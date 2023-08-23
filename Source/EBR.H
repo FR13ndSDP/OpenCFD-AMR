@@ -121,6 +121,29 @@ protected:
   // Compute initial time step.
   amrex::Real initialTimeStep();
 
+  // Advance flow field at this level in time.
+  void flow_advance(amrex::Real time, amrex::Real dt, int iteration, int ncycle);
+
+#ifdef CHEM
+
+  // Advance chemical reaction at this level in time.
+  void chemical_advance(amrex::Real dt);
+
+  // Advance multispecies flow field at this level in time.
+  void flow_advance_multi(amrex::Real time, amrex::Real dt, int iteration, int ncycle);
+
+  // Advance multispecies field at this level in time.
+  void specie_advance_multi(amrex::Real time, amrex::Real dt, int iteration, int ncycle);
+
+  // Compute RHS with Multispecies
+  void compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, amrex::MultiFab &dSdt,
+                          amrex::Real dt, amrex::EBFluxRegister *fr_as_crse, amrex::EBFluxRegister *fr_as_fine);
+
+  // Compute RHS of species transport    
+  void scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, amrex::MultiFab &dSdt, 
+                   amrex::Real dt, amrex::EBFluxRegister *fine, amrex::EBFluxRegister *current);
+#endif
+
   // core function
   void compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt,
                     amrex::Real dt, amrex::EBFluxRegister *fr_as_crse,
@@ -144,12 +167,6 @@ protected:
                             Real dt);
   
   void state_redist(amrex::MultiFab& state, int ng);
-  
-#ifdef CHEM
-  void scalar_dSdt(const amrex::MultiFab &Spec, const amrex::MultiFab &S, amrex::MultiFab &dSdt,
-                    amrex::Real dt, amrex::EBFluxRegister *fr_as_crse,
-                    amrex::EBFluxRegister *fr_as_fine);
-#endif
 
   // print total momentum and energy
   // only used when verbose>=2
@@ -171,11 +188,13 @@ protected:
   static constexpr int NUM_GROW = 4;
 
   // conservative states
+#ifdef CHEM
   enum StateVariable { Density = 0, Xmom, Ymom, Zmom, Eden, NUM_STATE };
 
-#ifdef CHEM
   enum StateType {State_Type = 0, Spec_Type = 1, NUM_STATE_TYPE};
 #else
+  enum StateVariable { Density = 0, Xmom, Ymom, Zmom, Eden, NUM_STATE };
+
   enum StateType { State_Type = 0, NUM_STATE_TYPE };
 #endif
 

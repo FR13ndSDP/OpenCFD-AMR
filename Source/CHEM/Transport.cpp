@@ -1,5 +1,4 @@
 #include "EBR.H"
-#include "CHEMkernels.H"
 #include "Reconstruction.H"
 #include "Kernels.H"
 
@@ -49,89 +48,66 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
             // no cut cell around
             if (flag.getType(amrex::grow(bx,NUM_GROW)) == FabType::regular)
             {
-                // primitives
                 const Box& bxg = amrex::grow(bx,NUM_GROW);
-                FArrayBox qtmp(bxg, NPRIM, The_Async_Arena());
-                auto const& q = qtmp.array();
 
-                // left and right state, async arena
-                const Box& nodebox = amrex::surroundingNodes(bx);
-                FArrayBox qltmp(nodebox, NSPECS, The_Async_Arena());
-                FArrayBox qrtmp(nodebox, NSPECS, The_Async_Arena());
-                auto const& ql = qltmp.array();
-                auto const& qr = qrtmp.array();
-
-
-                ParallelFor<NTHREADS>(bxg, 
-                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-                {
-                    c2prim(i,j,k,statefab,q,*lparm);
-                });
+                // f+ and f-
+                FArrayBox fptmp(bxg, ncomp, The_Async_Arena());
+                FArrayBox fmtmp(bxg, ncomp, The_Async_Arena());
+                auto const& fp = fptmp.array();
+                auto const& fm = fmtmp.array();
 
                 // X-direction
                 int cdir = 0;
                 const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
 
+                ParallelFor<NTHREADS>(bxg, ncomp,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+                {
+                    Real un = statefab(i,j,k,UMX)/statefab(i,j,k,URHO);
+                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un))*sfab(i,j,k,n);
+                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
+                });
+
                 ParallelFor<NTHREADS>(xflxbx, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
-                    reconstruction_x(i,j,k,n,ql,qr,sfab,*lparm);
-                });
-
-                ParallelFor<NTHREADS>(xflxbx,
-                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-                {
-                    conv_flux_x(i,j,k,ql,qr,q,fxfab, *lparm);
-                });
-
-                ParallelFor<NTHREADS>(xflxbx,
-                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-                {
-                    diffuse_flux_x(i,j,k,sfab,q,fxfab,dxinv);
+                    reconstruction_x(i,j,k,n,fp,fm,fxfab,*lparm);
                 });
 
                 // Y-direction
                 cdir = 1;
                 const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
 
+                ParallelFor<NTHREADS>(bxg, ncomp,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+                {
+                    Real un = statefab(i,j,k,UMY)/statefab(i,j,k,URHO);
+                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un))*sfab(i,j,k,n);
+                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
+                });
+
                 ParallelFor<NTHREADS>(yflxbx, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
-                    reconstruction_y(i,j,k,n,ql,qr,sfab,*lparm);
-                });
-
-                ParallelFor<NTHREADS>(yflxbx,
-                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-                {
-                    conv_flux_y(i,j,k,ql,qr,q,fyfab, *lparm);
-                });
-
-                ParallelFor<NTHREADS>(yflxbx,
-                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-                {
-                    diffuse_flux_y(i,j,k,sfab,q,fyfab,dxinv);
+                    reconstruction_y(i,j,k,n,fp,fm,fyfab,*lparm);
                 });
 
                 // Z-direction
                 cdir = 2;
                 const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
 
+                ParallelFor<NTHREADS>(bxg, ncomp,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+                {
+                    Real un = statefab(i,j,k,UMZ)/statefab(i,j,k,URHO);
+                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un))*sfab(i,j,k,n);
+                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
+                });
+
                 ParallelFor<NTHREADS>(zflxbx, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
-                    reconstruction_z(i,j,k,n,ql,qr,sfab,*lparm);
-                });
-
-                ParallelFor<NTHREADS>(zflxbx,
-                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-                {
-                    conv_flux_z(i,j,k,ql,qr,q,fzfab, *lparm);
-                });
-
-                ParallelFor<NTHREADS>(zflxbx,
-                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-                {
-                    diffuse_flux_z(i,j,k,sfab,q,fzfab,dxinv);
+                    reconstruction_z(i,j,k,n,fp,fm,fzfab,*lparm);
                 });
 
                 ParallelFor<NTHREADS>(bx, ncomp,

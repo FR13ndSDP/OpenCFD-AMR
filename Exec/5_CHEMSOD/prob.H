@@ -7,6 +7,7 @@
 #include "Constants.H"
 #include "prob_parm.H"
 #include <AMReX_EBCellFlag.H>
+#include "LiDryer.H"
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
@@ -17,26 +18,69 @@ ebr_initdata (int i, int j, int k, amrex::Array4<amrex::Real> const& state,
               Parm const& parm, ProbParm const& prob_parm)
 {
     using amrex::Real;
+
+    Real Pt = prob_parm.p;
+    Real temp = prob_parm.T;
+    Real rho, et;
+
     const Real* prob_lo = geomdata.ProbLo();
     const Real* dx      = geomdata.CellSize();
+    Real Xt[NSPECS] = {0.0}, Yt[NSPECS], rhoi[NSPECS];
+    Xt[0] = 0.666666;
+    Xt[1] = 0.333333;
+    Xt[8] = 1.0 - Xt[0] - Xt[1];
 
     Real x = prob_lo[0] + (i+Real(0.5))*dx[0];
-    Real Pt, rhot, uxt;
-    if (x < Real(0.5)) {
-        Pt = prob_parm.p_l;
-        rhot = prob_parm.rho_l;
-        uxt = prob_parm.u_l;
-    } else {
-        Pt = prob_parm.p_r;
-        rhot = prob_parm.rho_r;
-        uxt = prob_parm.u_r;
+    if (x < 0.001) {
+        Pt = prob_parm.p0;
+        temp = prob_parm.T0;
     }
-    state(i,j,k,URHO ) = rhot;
-    state(i,j,k,UMX  ) = rhot*uxt;
+
+    CKXTY(Xt, Yt);
+
+    CKRHOY(Pt, temp, Yt, rho);
+
+    for (int n=0; n<NSPECS; ++n) {
+        rhoi[n] = rho * Yt[n];
+    }
+
+    CKUBMS(temp, rhoi, et);
+
+    state(i,j,k,URHO ) = rho;
+    state(i,j,k,UMX  ) = Real(0.0);
     state(i,j,k,UMY  ) = Real(0.0);
     state(i,j,k,UMZ  ) = Real(0.0);
-    Real et = Pt/(parm.eos_gamma-Real(1.0));
-    state(i,j,k,UEDEN) = et + Real(0.5)*rhot*uxt*uxt;
+    state(i,j,k,UEDEN) = et;
+}
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void
+ebr_initspec (int i, int j, int k, 
+              amrex::Array4<amrex::Real const> const& state,
+              amrex::Array4<amrex::Real> const& spec,
+              amrex::GeometryData const& geomdata)
+{
+    using amrex::Real;
+
+    Real rho;
+    // const Real* prob_lo = geomdata.ProbLo();
+    // const Real* dx      = geomdata.CellSize();
+    Real Xt[NSPECS] = {0.0}, Yt[NSPECS], rhoi[NSPECS];
+    Xt[0] = 0.666666;
+    Xt[1] = 0.333333;
+    Xt[8] = 1.0 - Xt[0] - Xt[1];
+
+    CKXTY(Xt, Yt);
+
+    rho = state(i,j,k,URHO);
+    for (int n=0; n<NSPECS; ++n) {
+        rhoi[n] = rho * Yt[n];
+    }
+
+    for (int n=0; n<NSPECS; ++n) {
+        spec(i,j,k,n) = rhoi[n];
+    }
 }
 
 #endif

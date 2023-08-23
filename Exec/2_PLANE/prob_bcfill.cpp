@@ -45,7 +45,7 @@ struct FillExtDir
                 // TODO: must use this loop here, but why?
                 for (int nc = 0; nc < numcomp; ++nc) {
                     if (nc == 2) {
-                        dest(i,j,k,dcomp+nc) = 0.1*inflow_state[dcomp+1]*Math::sinpi(z*4/0.0375)*Math::cospi(x*200);
+                        dest(i,j,k,dcomp+nc) = 0.05*inflow_state[dcomp+1]*Math::sinpi(z*8/0.075)*Math::cospi(x*200);
                     }
                 }
             }

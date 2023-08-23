@@ -22,7 +22,6 @@ set(EBAMR_CASE            "5_CHEMSOD"  CACHE STRING "Case folder")
 #
 # Physics options
 #
-option(OPTION_USE_EB        "Enable Embedded Boundary"     ON)
 option(OPTION_USE_CHEM      "Enable chemical reaction"     ON)
 
 #

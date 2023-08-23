@@ -1,21 +1,21 @@
-max_step  = 2000
+max_step  = 10000
 stop_time = 0.2
 
-geometry.is_periodic = 0 0 0
+geometry.is_periodic = 1 1 1
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     =   0.0      0.0      0.0
-geometry.prob_hi     =   4.0      1.0      0.008333333333333333
-amr.n_cell           =   960      240      2
+geometry.prob_hi     =   1.0      1.0      1.0
+amr.n_cell           =   8        8        8
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
 # 1 = Inflow             4 = SlipWall
 # 2 = Outflow            5 = NoSlipWall
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
-ebr.lo_bc       =  1   4   2
-ebr.hi_bc       =  2   1   2
+ebr.lo_bc       =  0   0   0
+ebr.hi_bc       =  0   0   0
 
-ebr.cfl = 0.5  # cfl number for hyperbolic system
+ebr.cfl = 1.0  # cfl number for hyperbolic system
 
 ebr.v = 2
 amr.v = 1
@@ -29,8 +29,8 @@ amr.check_input     = 1       #
 amr.max_level       = 0       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2 # how often to regrid
-amr.blocking_factor = 2
-amr.max_grid_size   = 64
+amr.blocking_factor = 8
+amr.max_grid_size   = 128
 amr.n_error_buf     = 0 # number of buffer cells in error est
 amr.grid_eff        = 1     # what constitutes an efficient grid
 
@@ -48,7 +48,7 @@ amr.derive_plot_vars  = pressure velocity
 ebr.refine_dengrad = 0.05
 ebr.refine_max_dengrad_lev = 4
 ebr.do_reflux = true
-ebr.time_integration = RK3
+ebr.time_integration = RK2
 ebr.do_visc = false
 
 # EB parameters

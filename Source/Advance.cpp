@@ -32,8 +32,17 @@ ebr_estdt (amrex::Box const& bx, amrex::Array4<Real const> const& state,
                 Real vx = mx*rhoinv;
                 Real vy = my*rhoinv;
                 Real vz = mz*rhoinv;
+// #ifdef CHEM
+//                 Real p;
+//                 Real T = state(i,j,k,UTemp);
+//                 CKPY(rhoi, T, p);
+//                 Real e = E-0.5_rt*rho*(vx*vx+vy*vy+vz*vz);
+//                 Real gamma = 1.0_rt + p/e;
+//                 Real cs = std::sqrt(gamma*p/rho);
+// #else
                 Real p = amrex::max((parm.eos_gamma-Real(1.0))*(E-Real(0.5)*rho*(vx*vx+vy*vy+vz*vz)), parm.smallp);
                 Real cs = std::sqrt(parm.eos_gamma*p*rhoinv);
+// #endif
                 Real dtx = dx[0]/(std::abs(vx)+cs);
                 Real dty = dx[1]/(std::abs(vy)+cs);
                 Real dtz = dx[2]/(std::abs(vz)+cs);
@@ -42,6 +51,8 @@ ebr_estdt (amrex::Box const& bx, amrex::Array4<Real const> const& state,
         }
     }
 
+    //TODO: fix dt
+    dt = 1e-8;
     return dt;
 }
 
@@ -65,9 +76,9 @@ Real EBR::estTimeStep()
     return estdt;
 }
 
-Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
+void EBR::flow_advance(Real time, Real dt, int iteration, int ncycle)
 {
-    BL_PROFILE("EBR::advance");
+    BL_PROFILE("EBR::flow_advance");
 
     for (int i=0; i<NUM_STATE_TYPE; i++)
     {
@@ -97,33 +108,6 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
         current = &flux_reg;
     }
 
-#ifdef CHEM
-    EBFluxRegister* fine_spec = nullptr; 
-    EBFluxRegister* current_spec = nullptr; 
-
-    if (do_reflux && level < parent->finestLevel())
-    {
-        EBR& fine_level = getLevel(level+1);
-        fine_spec = &fine_level.flux_reg_spec;
-        fine_spec->reset();
-    }
-
-    if (do_reflux && level > 0)
-    {
-        current_spec = &flux_reg_spec;
-    }
-
-    // do scalar transport
-    MultiFab& Spec_new = get_new_data(Spec_Type);
-    MultiFab Spec_border(grids, dmap, NSPECS, NUM_GROW, MFInfo(), Factory());
-    MultiFab dSdt_spec(grids, dmap, NSPECS, 0, MFInfo(), Factory());
-
-    FillPatch(*this, Spec_border, NUM_GROW, time, Spec_Type, 0, NSPECS);
-    FillPatch(*this, Sborder, NUM_GROW, time, State_Type, 0, NUM_STATE);
-    scalar_dSdt(Spec_border, Sborder, dSdt_spec, dt, fine_spec, current_spec);
-    MultiFab::LinComb(Spec_new, 1.0, Spec_border, 0, dt, dSdt_spec, 0, 0, NSPECS, 0);
-#endif
-
     // add Euler here for debug
     if (time_integration == "Euler")
     {
@@ -149,27 +133,6 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
         MultiFab::Saxpy(S_new, 0.5*dt, dSdt, 0, 0, NUM_STATE, 0);
     } else
     {
-        // // RK3 stage 1
-        // FillPatch(*this, Sborder, NUM_GROW, time, State_Type, 0, NUM_STATE);
-        // compute_dSdt(Sborder, dSdt, Real(dt/6.0), fine, current);
-        // // U^* = U^n + dt * dUdt^n
-        // // S_new = 1 * Sborder + dt * dSdt
-        // MultiFab::LinComb(S_new, 1.0, Sborder, 0, dt, dSdt, 0, 0, NUM_STATE, 0);
-
-        // // Rk3 stage 2
-        // // after fillpatch Sborder is U^*
-        // FillPatch(*this, Sborder, NUM_GROW, time+dt, State_Type, 0, NUM_STATE);
-        // compute_dSdt(Sborder, dSdt, Real(dt/6.0), fine, current);
-        // // S_new = 0.25 * U^* + 0.75 * U^n + 0.25*dt*dUdt^*
-        // MultiFab::LinComb(S_new, 0.25, Sborder, 0, 0.75, S_old, 0, 0, NUM_STATE, 0);
-        // MultiFab::Saxpy(S_new, 0.25*dt, dSdt, 0, 0, NUM_STATE, 0);
-
-        // // Rk3 stage 3
-        // // after fillpatch Sborder is U^*
-        // FillPatch(*this, Sborder, NUM_GROW, time+dt, State_Type, 0, NUM_STATE);
-        // compute_dSdt(Sborder, dSdt, Real(2.0*dt/3.0), fine, current);
-        // MultiFab::LinComb(S_new, 2.0/3.0, Sborder, 0, 1.0/3.0, S_old, 0, 0, NUM_STATE, 0);
-        // MultiFab::Saxpy(S_new, 2.0/3.0*dt, dSdt, 0, 0, NUM_STATE, 0);
         RK(3, State_Type, time, dt, iteration, ncycle,
         // Given state S, compute dSdt. dtsub is needed for flux register operations
         [&] (int /*stage*/, MultiFab& dSdt, MultiFab const& S,
@@ -179,11 +142,28 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
         // TODO: implement state redistribution
        [&] (int /*stage*/, MultiFab& S) { state_redist(S,0); });
     }
+}
 
-#ifdef CHEM
-// density fix
+Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
+{
+    BL_PROFILE("EBR::advance");
 
+#ifndef CHEM
+    flow_advance(time, dt, iteration, ncycle);
+#else
+    int iter = 5;
+    Real dt1 = 0.5*dt;
+    Real dt2 = dt/iter;
+
+    specie_advance_multi(time, dt1, iteration, ncycle);
+    flow_advance_multi(time, dt1, iteration, ncycle);
+    for (int n=0; n<iter; ++n) {
+        chemical_advance(dt2);
+    }
+    specie_advance_multi(time+dt1, dt1, iteration, ncycle);
+    flow_advance_multi(time+dt1, dt1, iteration, ncycle);
 #endif
+
     return dt;
 }
 
@@ -242,13 +222,13 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     FArrayBox qtmp(bxg, NPRIM, The_Async_Arena());
                     auto const& q = qtmp.array();
 
-                    // left and right state, async arena
-                    const Box& nodebox = amrex::surroundingNodes(bx);
-                    FArrayBox qltmp(nodebox, NPRIM, The_Async_Arena());
-                    FArrayBox qrtmp(nodebox, NPRIM, The_Async_Arena());
-                    auto const& ql = qltmp.array();
-                    auto const& qr = qrtmp.array();
+                    // positive and negative fluxes
+                    FArrayBox fptmp(bxg, ncomp, The_Async_Arena());
+                    FArrayBox fmtmp(bxg, ncomp, The_Async_Arena());
+                    auto const& fp = fptmp.array();
+                    auto const& fm = fmtmp.array();
 
+                    // For perfect gas
                     ParallelFor<NTHREADS>(bxg, 
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
@@ -259,16 +239,17 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     int cdir = 0;
                     const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NTHREADS>(xflxbx, NPRIM,
-                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
-                    {
-                        reconstruction_x(i,j,k,n,ql,qr,q,*lparm);
-                    });
-
-                    ParallelFor<NTHREADS>(xflxbx,
+                    // flux split
+                    ParallelFor<NTHREADS>(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        compute_flux_x(i,j,k,ql,qr,fxfab,*lparm);
+                        flux_split_x(i,j,k,fp,fm,q,*lparm);
+                    });
+
+                    ParallelFor<NTHREADS>(xflxbx, ncomp,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+                    {
+                        reconstruction_x(i,j,k,n,fp,fm,fxfab,*lparm);
                     });
 
                     if (do_visc) {
@@ -279,20 +260,21 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                         });
                     }
 
+
                     // Y-direction
                     cdir = 1;
                     const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NTHREADS>(yflxbx, NPRIM,
-                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
-                    {
-                        reconstruction_y(i,j,k,n,ql,qr,q,*lparm);
-                    });
-
-                    ParallelFor<NTHREADS>(yflxbx,
+                    ParallelFor<NTHREADS>(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        compute_flux_y(i,j,k,ql,qr,fyfab,*lparm);
+                        flux_split_y(i,j,k,fp,fm,q,*lparm);
+                    });
+
+                    ParallelFor<NTHREADS>(yflxbx, ncomp,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+                    {
+                        reconstruction_y(i,j,k,n,fp,fm,fyfab,*lparm);
                     });
 
                     if (do_visc) {
@@ -307,16 +289,16 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     cdir = 2;
                     const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NTHREADS>(zflxbx, NPRIM,
-                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
-                    {
-                        reconstruction_z(i,j,k,n,ql,qr,q,*lparm);
-                    });
-
-                    ParallelFor<NTHREADS>(zflxbx,
+                    ParallelFor<NTHREADS>(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        compute_flux_z(i,j,k,ql,qr,fzfab,*lparm);
+                        flux_split_z(i,j,k,fp,fm,q,*lparm);
+                    });
+
+                    ParallelFor<NTHREADS>(zflxbx, ncomp,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+                    {
+                        reconstruction_z(i,j,k,n,fp,fm,fzfab,*lparm);
                     });
 
                     if (do_visc) {
@@ -327,7 +309,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                         });
                     }
 
-                    ParallelFor<NTHREADS>(bx, NCONS,
+                    ParallelFor<NTHREADS>(bx, ncomp,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         divop(i,j,k,n,dsdtfab,AMREX_D_DECL(fxfab, fyfab, fzfab), dxinv);

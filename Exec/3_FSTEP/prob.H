@@ -22,7 +22,7 @@ ebr_initdata (int i, int j, int k, amrex::Array4<amrex::Real> const& state,
     Pt = prob_parm.p_l;
     rhot = prob_parm.rho_l;
     uxt = prob_parm.u_l;
-    if (flag(i,j,k).isCovered() || vfrac(i,j,k) <= parm.frac_t) {
+    if (flag(i,j,k).isCovered()) {
         state(i,j,k,URHO ) = rhot;
         state(i,j,k,UMX  ) = Real(0.0);
         state(i,j,k,UMY  ) = Real(0.0);

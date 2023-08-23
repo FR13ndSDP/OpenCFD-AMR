@@ -48,7 +48,6 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     // Because we are going to redistribute, we put the divergence into divc
     //    rather than directly into dsdt_arr
     auto const& divc_arr = divc.array();
-    auto const& redistwgt_arr = redistwgt.array();
 
     // Primitive variables
     FArrayBox qtmp(bxg, NPRIM, The_Async_Arena());
@@ -105,7 +104,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     ParallelFor(xflxbx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
-        compute_flux_x(i, j, k, ql, qr, fxfab, *lparm);
+        eb_flux(i, j, k, ql, qr, fxfab, cdir, *lparm);
     });
 
     // y-direction
@@ -120,7 +119,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     ParallelFor(yflxbx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
-        compute_flux_y(i, j, k, ql, qr, fyfab, *lparm);
+        eb_flux(i, j, k, ql, qr, fyfab, cdir, *lparm);
     });
 
     // z-direction
@@ -135,7 +134,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     ParallelFor(zflxbx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
-        compute_flux_z(i, j, k, ql, qr, fzfab, *lparm);
+        eb_flux(i, j, k, ql, qr, fzfab, cdir, *lparm);
     });
 
     ParallelFor(bx, NCONS,

@@ -1,7 +1,6 @@
 #ifndef FLUXSPLIT_H
 #define FLUXSPLIT_H
 
-
 #include "AMReX_GpuPrint.H"
 #include "AMReX_GpuQualifiers.H"
 #include <Constants.H>
@@ -11,183 +10,188 @@
 // Steger-Warming
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void
-compute_flux_x (int i, int j, int k,
-             amrex::Array4<amrex::Real const> const& ql,
-             amrex::Array4<amrex::Real const> const& qr,
-             amrex::Array4<amrex::Real> const& fx,
-             Parm const& parm) noexcept
-{
-    using amrex::Real;
-    amrex::GpuArray<Real, NCONS> fm;
-    amrex::GpuArray<Real, NCONS> fp;
-    Real tmp = Real(1.0)/(Real(2.0)*parm.eos_gamma);
+void flux_split_x(int i, int j, int k, 
+                  amrex::Array4<amrex::Real> const &fp,
+                  amrex::Array4<amrex::Real> const &fm,
+                  amrex::Array4<amrex::Real const> const &q,
+                  Parm const &parm) noexcept {
+  using amrex::Real;
+  Real d = q(i, j, k, QRHO);
+  Real u = q(i, j, k, QU);
+  Real v = q(i, j, k, QV);
+  Real w = q(i, j, k, QW);
+  Real c = q(i, j, k, QC);
+#ifndef CHEM
+    Real gamma = parm.eos_gamma;
+#else
+    Real p = q(i, j, k, QPRES);
+    Real e = q(i, j, k, QE);
+    Real gamma = 1.0 + p/e;
+#endif
 
-    Real dl= ql(i,j,k,QRHO);
-    Real uul=ql(i,j,k,QU);
-    Real vvl=ql(i,j,k,QV);
-    Real wwl=ql(i,j,k,QW);
-    Real pl=amrex::max(ql(i,j,k,QPRES),parm.smallp);
-    Real dr= qr(i,j,k,QRHO);
-    Real uur=qr(i,j,k,QU);
-    Real vvr=qr(i,j,k,QV);
-    Real wwr=qr(i,j,k,QW);
-    Real pr=amrex::max(qr(i,j,k,QPRES),parm.smallp);
-    Real al=std::sqrt(parm.eos_gamma*pl/dl);
-    Real ar=std::sqrt(parm.eos_gamma*pr/dr);
+  Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
+  Real tmp2 = Real(2.0) * (gamma - Real(1.0));
+  Real tmp3 =
+      (Real(3.0) - gamma) / (Real(2.0) * (gamma - Real(1.0)));
 
-    Real tmp1=Real(2.0)*(parm.eos_gamma-Real(1.0));
-    Real tmp3=(Real(3.0)-parm.eos_gamma)/(Real(2.0)*(parm.eos_gamma-Real(1.0)));
-    // eigenvalues---------
-    Real E1P=(uul+amrex::Math::abs(uul))*Real(0.5);
-    Real E2P=(uul-al+amrex::Math::abs(uul-al))*Real(0.5);
-    Real E3P=(uul+al+amrex::Math::abs(uul+al))*Real(0.5);
-    Real tmp0=dl*tmp;
-    fp[0]=tmp0*(tmp1*E1P+E2P+E3P);
-    fp[1]=tmp0*(tmp1*E1P*uul+E2P*(uul-al)+E3P*(uul+al));
-    fp[2]=tmp0*(tmp1*E1P*vvl+E2P*vvl+E3P*vvl);
-    fp[3]=tmp0*(tmp1*E1P*wwl+E2P*wwl+E3P*wwl);
-    fp[4]=tmp0*(E1P*(parm.eos_gamma-Real(1.0))*(uul*uul+vvl*vvl+wwl*wwl)+E2P*((uul-al)*(uul-al)+vvl*vvl+wwl*wwl)*Real(0.5) \
-      +E3P*((uul+al)*(uul+al)+vvl*vvl+wwl*wwl)*Real(0.5)+tmp3*al*al*(E2P+E3P));
 
-    Real E1M=(uur-amrex::Math::abs(uur))*Real(0.5);
-    Real E2M=(uur-ar-amrex::Math::abs(uur-ar))*Real(0.5);
-    Real E3M=(uur+ar-amrex::Math::abs(uur+ar))*Real(0.5);
-    tmp0=dr*tmp;
-    fm[0]=tmp0*(tmp1*E1M+E2M+E3M);
-    fm[1]=tmp0*(tmp1*E1M*uur+E2M*(uur-ar)+E3M*(uur+ar));
-    fm[2]=tmp0*(tmp1*E1M*vvr+E2M*vvr+E3M*vvr);
-    fm[3]=tmp0*(tmp1*E1M*wwr+E2M*wwr+E3M*wwr);
-    fm[4]=tmp0*(E1M*(parm.eos_gamma-Real(1.0))*(uur*uur+vvr*vvr+wwr*wwr)+E2M*((uur-ar)*(uur-ar)+vvr*vvr+wwr*wwr)*Real(0.5) \
-      +E3M*((uur+ar)*(uur+ar)+vvr*vvr+wwr*wwr)*Real(0.5)+tmp3*ar*ar*(E2M+E3M));
+  Real uc1 = u - c;
+  Real uc2 = u + c;
+  Real vvc1 = 0.5 * (uc1 * uc1 + v * v + w * w);
+  Real vvc2 = 0.5 * (uc2 * uc2 + v * v + w * w);
+  Real v2 = (gamma - 1) * (u * u + v * v + w * w);
+  Real w2 = tmp3 * c * c;
 
-    for (int n=0; n<NCONS; ++n) {
-        fx(i,j,k,n) = fp[n]+fm[n];
-    }
+  // eigenvalues---------
+  Real E1 = u;
+  Real E2 = u - c;
+  Real E3 = u + c;
+  Real E1P = (E1 + amrex::Math::abs(E1)) * Real(0.5);
+  Real E2P = (E2 + amrex::Math::abs(E2)) * Real(0.5);
+  Real E3P = (E3 + amrex::Math::abs(E3)) * Real(0.5);
+
+  Real E1M = E1 - E1P;
+  Real E2M = E2 - E2P;
+  Real E3M = E3 - E3P;
+
+  Real tmp0 = d * tmp1;
+
+  fp(i, j, k, URHO) = tmp0 * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UMX) = tmp0 * (tmp2 * E1P * u + E2P * uc1 + E3P * uc2);
+  fp(i, j, k, UMY) = tmp0 * v * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UMZ) = tmp0 * w * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UEDEN) =
+      tmp0 * (E1P * v2 + E2P * vvc1 + E3P * vvc2 + w2 * (E2P + E3P));
+
+  fm(i, j, k, URHO) = tmp0 * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UMX) = tmp0 * (tmp2 * E1M * u + E2M * uc1 + E3M * uc2);
+  fm(i, j, k, UMY) = tmp0 * v * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UMZ) = tmp0 * w * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UEDEN) =
+      tmp0 * (E1M * v2 + E2M * vvc1 + E3M * vvc2 + w2 * (E2M + E3M));
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void
-compute_flux_y (int i, int j, int k,
-             amrex::Array4<amrex::Real const> const& ql,
-             amrex::Array4<amrex::Real const> const& qr,
-             amrex::Array4<amrex::Real> const& fy,
-             Parm const& parm) noexcept
-{
-    using amrex::Real;
-    amrex::GpuArray<Real, NCONS> fp;
-    amrex::GpuArray<Real, NCONS> fm;
-    Real tmp = Real(1.0)/(Real(2.0)*parm.eos_gamma);
+void flux_split_y(int i, int j, int k, 
+                  amrex::Array4<amrex::Real> const &fp,
+                  amrex::Array4<amrex::Real> const &fm,
+                  amrex::Array4<amrex::Real const> const &q,
+                  Parm const &parm) noexcept {
+  using amrex::Real;
+  Real d = q(i, j, k, QRHO);
+  Real u = q(i, j, k, QU);
+  Real v = q(i, j, k, QV);
+  Real w = q(i, j, k, QW);
+  Real c = q(i, j, k, QC);
+#ifndef CHEM
+    Real gamma = parm.eos_gamma;
+#else
+    Real p = q(i, j, k, QPRES);
+    Real e = q(i, j, k, QE);
+    Real gamma = 1.0 + p/e;
+#endif
 
-    Real dl=ql(i,j,k,QRHO);
-    Real uul=ql(i,j,k,QV);
-    Real vvl=-ql(i,j,k,QU);
-    Real wwl=ql(i,j,k,QW);
-    Real pl=amrex::max(ql(i,j,k,QPRES),parm.smallp);
-    Real dr=qr(i,j,k,QRHO);
-    Real uur=qr(i,j,k,QV);
-    Real vvr=-qr(i,j,k,QU);
-    Real wwr=qr(i,j,k,QW);
-    Real pr=amrex::max(qr(i,j,k,QPRES),parm.smallp);
-    Real al=std::sqrt(parm.eos_gamma*pl/dl);
-    Real ar=std::sqrt(parm.eos_gamma*pr/dr);
+  Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
+  Real tmp2 = Real(2.0) * (gamma - Real(1.0));
+  Real tmp3 =
+      (Real(3.0) - gamma) / (Real(2.0) * (gamma - Real(1.0)));
 
-    Real tmp1=Real(2.0)*(parm.eos_gamma-Real(1.0));
-    Real tmp3=(Real(3.0)-parm.eos_gamma)/(Real(2.0)*(parm.eos_gamma-Real(1.0)));
-    // eigenvalues---------
-    Real E1P=(uul+amrex::Math::abs(uul))*Real(0.5);
-    Real E2P=(uul-al+amrex::Math::abs(uul-al))*Real(0.5);
-    Real E3P=(uul+al+amrex::Math::abs(uul+al))*Real(0.5);
-    Real tmp0=dl*tmp;
-    fp[0]=tmp0*(tmp1*E1P+E2P+E3P);
-    fp[1]=tmp0*(tmp1*E1P*uul+E2P*(uul-al)+E3P*(uul+al));
-    fp[2]=tmp0*(tmp1*E1P*vvl+E2P*vvl+E3P*vvl);
-    fp[3]=tmp0*(tmp1*E1P*wwl+E2P*wwl+E3P*wwl);
-    fp[4]=tmp0*(E1P*(parm.eos_gamma-Real(1.0))*(uul*uul+vvl*vvl+wwl*wwl)+E2P*((uul-al)*(uul-al)+vvl*vvl+wwl*wwl)*Real(0.5) \
-      +E3P*((uul+al)*(uul+al)+vvl*vvl+wwl*wwl)*Real(0.5)+tmp3*al*al*(E2P+E3P));
+  Real vc1 = v - c;
+  Real vc2 = v + c;
+  Real vvc1 = 0.5 * (u * u + vc1 * vc1 + w * w);
+  Real vvc2 = 0.5 * (u * u + vc2 * vc2 + w * w);
+  Real v2 = (gamma - 1) * (u * u + v * v + w * w);
+  Real w2 = tmp3 * c * c;
 
-    Real E1M=(uur-amrex::Math::abs(uur))*Real(0.5);
-    Real E2M=(uur-ar-amrex::Math::abs(uur-ar))*Real(0.5);
-    Real E3M=(uur+ar-amrex::Math::abs(uur+ar))*Real(0.5);
-    tmp0=dr*tmp;
-    fm[0]=tmp0*(tmp1*E1M+E2M+E3M);
-    fm[1]=tmp0*(tmp1*E1M*uur+E2M*(uur-ar)+E3M*(uur+ar));
-    fm[2]=tmp0*(tmp1*E1M*vvr+E2M*vvr+E3M*vvr);
-    fm[3]=tmp0*(tmp1*E1M*wwr+E2M*wwr+E3M*wwr);
-    fm[4]=tmp0*(E1M*(parm.eos_gamma-Real(1.0))*(uur*uur+vvr*vvr+wwr*wwr)+E2M*((uur-ar)*(uur-ar)+vvr*vvr+wwr*wwr)*Real(0.5) \
-      +E3M*((uur+ar)*(uur+ar)+vvr*vvr+wwr*wwr)*Real(0.5)+tmp3*ar*ar*(E2M+E3M));
+  // eigenvalues---------
+  Real E1 = v;
+  Real E2 = v - c;
+  Real E3 = v + c;
+  Real E1P = (E1 + amrex::Math::abs(E1)) * Real(0.5);
+  Real E2P = (E2 + amrex::Math::abs(E2)) * Real(0.5);
+  Real E3P = (E3 + amrex::Math::abs(E3)) * Real(0.5);
 
-    fy(i,j,k,URHO)  =   fp[URHO]+fm[URHO];
-    fy(i,j,k,UMX)   = -(fp[UMY]+fm[UMY]);
-    fy(i,j,k,UMY)   =   fp[UMX]+fm[UMX];
-    fy(i,j,k,UMZ)   =   fp[UMZ]+fm[UMZ];
-    fy(i,j,k,UEDEN) =   fp[UEDEN]+fm[UEDEN];
+  Real E1M = E1 - E1P;
+  Real E2M = E2 - E2P;
+  Real E3M = E3 - E3P;
+
+  Real tmp0 = d * tmp1;
+
+  fp(i, j, k, URHO) = tmp0 * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UMX) = tmp0 * u * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UMY) = tmp0 * (tmp2 * E1P * v + E2P * vc1 + E3P * vc2);
+  fp(i, j, k, UMZ) = tmp0 * w * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UEDEN) =
+      tmp0 * (E1P * v2 + E2P * vvc1 + E3P * vvc2 + w2 * (E2P + E3P));
+
+  fm(i, j, k, URHO) = tmp0 * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UMX) = tmp0 * u * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UMY) = tmp0 * (tmp2 * E1M * v + E2M * vc1 + E3M * vc2);
+  fm(i, j, k, UMZ) = tmp0 * w * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UEDEN) =
+      tmp0 * (E1M * v2 + E2M * vvc1 + E3M * vvc2 + w2 * (E2M + E3M));
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void
-compute_flux_z (int i, int j, int k,
-             amrex::Array4<amrex::Real const> const& ql,
-             amrex::Array4<amrex::Real const> const& qr,
-             amrex::Array4<amrex::Real> const& fz,
-             Parm const& parm) noexcept
-{
-    using amrex::Real;
-    amrex::GpuArray<Real, NCONS> fp;
-    amrex::GpuArray<Real, NCONS> fm;
-    Real tmp = Real(1.0)/(Real(2.0)*parm.eos_gamma);
+void flux_split_z(int i, int j, int k, 
+                  amrex::Array4<amrex::Real> const &fp,
+                  amrex::Array4<amrex::Real> const &fm,
+                  amrex::Array4<amrex::Real const> const &q,
+                  Parm const &parm) noexcept {
+  using amrex::Real;
+  Real d = q(i, j, k, QRHO);
+  Real u = q(i, j, k, QU);
+  Real v = q(i, j, k, QV);
+  Real w = q(i, j, k, QW);
+  Real c = q(i, j, k, QC);
+#ifndef CHEM
+    Real gamma = parm.eos_gamma;
+#else
+    Real p = q(i, j, k, QPRES);
+    Real e = q(i, j, k, QE);
+    Real gamma = 1.0 + p/e;
+#endif
 
-    Real dl=ql(i,j,k,QRHO);
-    Real uul=ql(i,j,k,QW);
-    Real vvl=ql(i,j,k,QV);
-    Real wwl=-ql(i,j,k,QU);
-    Real pl=amrex::max(ql(i,j,k,QPRES),parm.smallp);
-    Real dr=qr(i,j,k,QRHO);
-    Real uur=qr(i,j,k,QW);
-    Real vvr=qr(i,j,k,QV);
-    Real wwr=-qr(i,j,k,QU);
-    Real pr=amrex::max(qr(i,j,k,QPRES),parm.smallp);
-    Real al=std::sqrt(parm.eos_gamma*pl/dl);
-    Real ar=std::sqrt(parm.eos_gamma*pr/dr);
+  Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
+  Real tmp2 = Real(2.0) * (gamma - Real(1.0));
+  Real tmp3 =
+      (Real(3.0) - gamma) / (Real(2.0) * (gamma - Real(1.0)));
 
-    Real tmp1=Real(2.0)*(parm.eos_gamma-Real(1.0));
-    Real tmp3=(Real(3.0)-parm.eos_gamma)/(Real(2.0)*(parm.eos_gamma-Real(1.0)));
-    // eigenvalues---------
-    Real E1P=(uul+amrex::Math::abs(uul))*Real(0.5);
-    Real E2P=(uul-al+amrex::Math::abs(uul-al))*Real(0.5);
-    Real E3P=(uul+al+amrex::Math::abs(uul+al))*Real(0.5);
-    Real tmp0=dl*tmp;
-    fp[0]=tmp0*(tmp1*E1P+E2P+E3P);
-    fp[1]=tmp0*(tmp1*E1P*uul+E2P*(uul-al)+E3P*(uul+al));
-    fp[2]=tmp0*(tmp1*E1P*vvl+E2P*vvl+E3P*vvl);
-    fp[3]=tmp0*(tmp1*E1P*wwl+E2P*wwl+E3P*wwl);
-    fp[4]=tmp0*(E1P*(parm.eos_gamma-Real(1.0))*(uul*uul+vvl*vvl+wwl*wwl)+E2P*((uul-al)*(uul-al)+vvl*vvl+wwl*wwl)*Real(0.5) \
-      +E3P*((uul+al)*(uul+al)+vvl*vvl+wwl*wwl)*Real(0.5)+tmp3*al*al*(E2P+E3P));
+  Real wc1 = w - c;
+  Real wc2 = w + c;
+  Real vvc1 = 0.5 * (u * u + v * v + wc1 * wc2);
+  Real vvc2 = 0.5 * (u * u + v * v + wc1 * wc2);
+  Real v2 = (gamma - 1) * (u * u + v * v + w * w);
+  Real w2 = tmp3 * c * c;
 
-    Real E1M=(uur-amrex::Math::abs(uur))*Real(0.5);
-    Real E2M=(uur-ar-amrex::Math::abs(uur-ar))*Real(0.5);
-    Real E3M=(uur+ar-amrex::Math::abs(uur+ar))*Real(0.5);
-    tmp0=dr*tmp;
-    fm[0]=tmp0*(tmp1*E1M+E2M+E3M);
-    fm[1]=tmp0*(tmp1*E1M*uur+E2M*(uur-ar)+E3M*(uur+ar));
-    fm[2]=tmp0*(tmp1*E1M*vvr+E2M*vvr+E3M*vvr);
-    fm[3]=tmp0*(tmp1*E1M*wwr+E2M*wwr+E3M*wwr);
-    fm[4]=tmp0*(E1M*(parm.eos_gamma-Real(1.0))*(uur*uur+vvr*vvr+wwr*wwr)+E2M*((uur-ar)*(uur-ar)+vvr*vvr+wwr*wwr)*Real(0.5) \
-      +E3M*((uur+ar)*(uur+ar)+vvr*vvr+wwr*wwr)*Real(0.5)+tmp3*ar*ar*(E2M+E3M));
+  // eigenvalues---------
+  Real E1 = w;
+  Real E2 = w - c;
+  Real E3 = w + c;
+  Real E1P = (E1 + amrex::Math::abs(E1)) * Real(0.5);
+  Real E2P = (E2 + amrex::Math::abs(E2)) * Real(0.5);
+  Real E3P = (E3 + amrex::Math::abs(E3)) * Real(0.5);
 
-    fz(i,j,k,URHO)  =   fp[URHO]+fm[URHO];
-    fz(i,j,k,UMX)   = -(fp[UMZ]+fm[UMZ]);
-    fz(i,j,k,UMY)   =   fp[UMY]+fm[UMY];
-    fz(i,j,k,UMZ)   =   fp[UMX]+fm[UMX];
-    fz(i,j,k,UEDEN) =   fp[UEDEN]+fm[UEDEN];
+  Real E1M = E1 - E1P;
+  Real E2M = E2 - E2P;
+  Real E3M = E3 - E3P;
 
-// #if AMREX_USE_GPU
-//     AMREX_DEVICE_PRINTF("flux_z : %f, %f, %f, %f, %f\n", fz(i,j,k,URHO), fz(i,j,k,UMX), fz(i,j,k,UMY), fz(i,j,k,UMZ), fz(i,j,k,UEDEN));
-// #else
-//   std::printf("flux_z : %f, %f, %f, %f, %f\n", fz(i,j,k,URHO), fz(i,j,k,UMX), fz(i,j,k,UMY), fz(i,j,k,UMZ), fz(i,j,k,UEDEN));
-// #endif
+  Real tmp0 = d * tmp1;
+
+  fp(i, j, k, URHO) = tmp0 * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UMX) = tmp0 * u * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UMY) = tmp0 * v * (tmp2 * E1P + E2P + E3P);
+  fp(i, j, k, UMZ) = tmp0 * (tmp2 * E1P * w + E2P * wc1 + E3P * wc2);
+  fp(i, j, k, UEDEN) =
+      tmp0 * (E1P * v2 + E2P * vvc1 + E3P * vvc2 + w2 * (E2P + E3P));
+
+  fm(i, j, k, URHO) = tmp0 * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UMX) = tmp0 * u * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UMY) = tmp0 * v * (tmp2 * E1M + E2M + E3M);
+  fm(i, j, k, UMZ) = tmp0 * (tmp2 * E1M * w + E2M * wc1 + E3M * wc2);
+  fm(i, j, k, UEDEN) =
+      tmp0 * (E1M * v2 + E2M * vvc1 + E3M * vvc2 + w2 * (E2M + E3M));
 }
-
 #endif

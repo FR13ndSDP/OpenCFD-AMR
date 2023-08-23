@@ -5,7 +5,7 @@
 #define UMX   1
 #define UMY   2
 #define UMZ   3
-#define UEDEN 4
+#define UEDEN 4 // rho*(e + 1/2*U^2)
 #define NCONS 5
 
 #define QRHO   0
@@ -13,12 +13,16 @@
 #define QV     2
 #define QW     3
 #define QPRES  4
-#define NPRIM  5
+#define QT     5
+#define QC     6
+#define QE     7 // rho*e
+#define NPRIM  8
 
 #define NTHREADS 256
 
 #ifdef CHEM
-#define NSPECS 4 
+#define NSPECS 9
+#define NREACS 19
 #define SPEC_START 0
 #define SPEC_END NSPECS-1
 #endif

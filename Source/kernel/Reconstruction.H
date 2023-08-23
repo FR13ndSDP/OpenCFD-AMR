@@ -23,39 +23,48 @@ minmod(amrex::Real const a, amrex::Real const b)
 // AMREX_FORCE_INLINE
 // void
 // reconstruction_x (int i, int j, int k, int n,
-//              amrex::Array4<amrex::Real> const& ql,
-//              amrex::Array4<amrex::Real> const& qr,
-//              amrex::Array4<amrex::Real const> const& q,
+//              amrex::Array4<amrex::Real const> const& ql,
+//              amrex::Array4<amrex::Real const> const& qr,
+//              amrex::Array4<amrex::Real> const& fxfab,
 //              Parm const& parm) noexcept
 // {
-//     ql(i,j,k,n) = q(i-1,j,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i-1,j,k,n), q(i-1,j,k,n)-q(i-2,j,k,n));
-//     qr(i,j,k,n) = q(i,j,k,n) - amrex::Real(0.5)*minmod(q(i+1,j,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i-1,j,k,n));
+//     Real fp, fm;
+
+//     fp = ql(i-1,j,k,n) + amrex::Real(0.5)*minmod(ql(i,j,k,n)-ql(i-1,j,k,n), ql(i-1,j,k,n)-ql(i-2,j,k,n));
+//     fm = qr(i,j,k,n) - amrex::Real(0.5)*minmod(qr(i+1,j,k,n)-qr(i,j,k,n), qr(i,j,k,n)-qr(i-1,j,k,n));
+//     fxfab(i,j,k,n) = fp+fm;
 // }
 
 // AMREX_GPU_DEVICE
 // AMREX_FORCE_INLINE
 // void
 // reconstruction_y (int i, int j, int k, int n,
-//              amrex::Array4<amrex::Real> const& ql,
-//              amrex::Array4<amrex::Real> const& qr,
-//              amrex::Array4<amrex::Real const> const& q,
+//              amrex::Array4<amrex::Real const> const& ql,
+//              amrex::Array4<amrex::Real const> const& qr,
+//              amrex::Array4<amrex::Real> const& fyfab,
 //              Parm const& parm) noexcept
 // {
-//     ql(i,j,k,n) = q(i,j-1,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j-1,k,n), q(i,j-1,k,n)-q(i,j-2,k,n));
-//     qr(i,j,k,n) = q(i,j,k,n) - amrex::Real(0.5)*minmod(q(i,j+1,k,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j-1,k,n));
+//     Real fp, fm;
+
+//     fp = ql(i,j-1,k,n) + amrex::Real(0.5)*minmod(ql(i,j,k,n)-ql(i,j-1,k,n), ql(i,j-1,k,n)-ql(i,j-2,k,n));
+//     fm = qr(i,j,k,n) - amrex::Real(0.5)*minmod(qr(i,j+1,k,n)-qr(i,j,k,n), qr(i,j,k,n)-qr(i,j-1,k,n));
+//     fyfab(i,j,k,n) = fp+fm;
 // }
 
 // AMREX_GPU_DEVICE
 // AMREX_FORCE_INLINE
 // void
 // reconstruction_z (int i, int j, int k, int n,
-//              amrex::Array4<amrex::Real> const& ql,
-//              amrex::Array4<amrex::Real> const& qr,
-//              amrex::Array4<amrex::Real const> const& q,
+//              amrex::Array4<amrex::Real const> const& ql,
+//              amrex::Array4<amrex::Real const> const& qr,
+//              amrex::Array4<amrex::Real> const& fzfab,
 //              Parm const& parm) noexcept
 // {
-//     ql(i,j,k,n) = q(i,j,k-1,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j,k-1,n), q(i,j,k-1,n)-q(i,j,k-2,n));
-//     ql(i,j,k,n) = q(i,j,k,n) - amrex::Real(0.5)*minmod(q(i,j,k+1,n)-q(i,j,k,n), q(i,j,k,n)-q(i,j,k-1,n));
+//     Real fp, fm;
+
+//     fp = ql(i,j,k-1,n) + amrex::Real(0.5)*minmod(ql(i,j,k,n)-ql(i,j,k-1,n), ql(i,j,k-1,n)-ql(i,j,k-2,n));
+//     fm = qr(i,j,k,n) - amrex::Real(0.5)*minmod(qr(i,j,k+1,n)-qr(i,j,k,n), qr(i,j,k,n)-qr(i,j,k-1,n));
+//     fzfab(i,j,k,n) = fp+fm;
 // }
 
 // 5th order WENO-Z
@@ -63,20 +72,21 @@ AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
 reconstruction_x (int i, int j, int k, int n,
-             amrex::Array4<amrex::Real> const& ql,
-             amrex::Array4<amrex::Real> const& qr,
-             amrex::Array4<amrex::Real const> const& q,
+             amrex::Array4<amrex::Real const> const& fp,
+             amrex::Array4<amrex::Real const> const& fm,
+             amrex::Array4<amrex::Real> const& fxfab,
              Parm const& parm) noexcept
 {
     using amrex::Real;
+    Real fpx,fmx;
+
     Real eps = 1e-6;
 
-    Real V1 = q(i-3,j,k,n);
-    Real V2 = q(i-2,j,k,n);
-    Real V3 = q(i-1,j,k,n);
-    Real V4 = q(i,j,k,n);
-    Real V5 = q(i+1,j,k,n);
-    Real V6 = q(i+2,j,k,n);
+    Real V1 = fp(i-3,j,k,n);
+    Real V2 = fp(i-2,j,k,n);
+    Real V3 = fp(i-1,j,k,n);
+    Real V4 = fp(i,j,k,n);
+    Real V5 = fp(i+1,j,k,n);
 
     // qL
     Real s11 = (13.0/12.0)*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 0.25*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
@@ -97,12 +107,18 @@ reconstruction_x (int i, int j, int k, int n,
     Real v1 = 2.0*V1-7.0*V2+11.0*V3;
     Real v2 = -V2+5.0*V3+2.0*V4;
     Real v3 = 2.0*V3+5.0*V4-V5;
-    ql(i,j,k,n) = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    fpx = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+
+    V1 = fm(i-2,j,k,n);
+    V2 = fm(i-1,j,k,n);
+    V3 = fm(i,j,k,n);
+    V4 = fm(i+1,j,k,n);
+    V5 = fm(i+2,j,k,n);
 
     // qR
-    s11 = (13.0/12.0)*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 0.25*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
-    s22 = (13.0/12.0)*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 0.25*(V5-V3)*(V5-V3);
-    s33 = (13.0/12.0)*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 0.25*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
+    s11 = (13.0/12.0)*(V5-2.0*V4+V3)*(V5-2.0*V4+V3) + 0.25*(V5-4.0*V4+3.0*V3)*(V5-4.0*V4+3.0*V3);
+    s22 = (13.0/12.0)*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 0.25*(V4-V2)*(V4-V2);
+    s33 = (13.0/12.0)*(V3-2.0*V2+V1)*(V3-2.0*V2+V1) + 0.25*(3.0*V3-4.0*V2+V1)*(3.0*V3-4.0*V2+V1);
 
     s55 = amrex::Math::abs(s11-s33);
 
@@ -115,30 +131,32 @@ reconstruction_x (int i, int j, int k, int n,
     a3 = 3.0*s33;
     invsum = 1.0/(a1+a2+a3);
 
-    v1 = 11.0*V4-7.0*V5+2.0*V6;
-    v2 = -V5+5.0*V4+2.0*V3;
-    v3 = 2.0*V4+5.0*V3-V2;
-    qr(i,j,k,n) = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    v1 = 11.0*V3-7.0*V4+2.0*V5;
+    v2 = -V4+5.0*V3+2.0*V2;
+    v3 = 2.0*V3+5.0*V2-V1;
+    fmx = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    fxfab(i,j,k,n) = fpx+fmx;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
 reconstruction_y (int i, int j, int k, int n,
-             amrex::Array4<amrex::Real> const& ql,
-             amrex::Array4<amrex::Real> const& qr,
-             amrex::Array4<amrex::Real const> const& q,
+             amrex::Array4<amrex::Real const> const& fp,
+             amrex::Array4<amrex::Real const> const& fm,
+             amrex::Array4<amrex::Real> const& fyfab,
              Parm const& parm) noexcept
 {
     using amrex::Real;
+    Real fpy,fmy;
+
     Real eps = 1e-6;
 
-    Real V1 = q(i,j-3,k,n);
-    Real V2 = q(i,j-2,k,n);
-    Real V3 = q(i,j-1,k,n);
-    Real V4 = q(i,j,k,n);
-    Real V5 = q(i,j+1,k,n);
-    Real V6 = q(i,j+2,k,n);
+    Real V1 = fp(i,j-3,k,n);
+    Real V2 = fp(i,j-2,k,n);
+    Real V3 = fp(i,j-1,k,n);
+    Real V4 = fp(i,j,k,n);
+    Real V5 = fp(i,j+1,k,n);
 
     // qL
     Real s11 = (13.0/12.0)*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 0.25*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
@@ -159,12 +177,18 @@ reconstruction_y (int i, int j, int k, int n,
     Real v1 = 2.0*V1-7.0*V2+11.0*V3;
     Real v2 = -V2+5.0*V3+2.0*V4;
     Real v3 = 2.0*V3+5.0*V4-V5;
-    ql(i,j,k,n) = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    fpy = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+
+    V1 = fm(i,j-2,k,n);
+    V2 = fm(i,j-1,k,n);
+    V3 = fm(i,j,k,n);
+    V4 = fm(i,j+1,k,n);
+    V5 = fm(i,j+2,k,n);
 
     // qR
-    s11 = (13.0/12.0)*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 0.25*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
-    s22 = (13.0/12.0)*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 0.25*(V5-V3)*(V5-V3);
-    s33 = (13.0/12.0)*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 0.25*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
+    s11 = (13.0/12.0)*(V5-2.0*V4+V3)*(V5-2.0*V4+V3) + 0.25*(V5-4.0*V4+3.0*V3)*(V5-4.0*V4+3.0*V3);
+    s22 = (13.0/12.0)*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 0.25*(V4-V2)*(V4-V2);
+    s33 = (13.0/12.0)*(V3-2.0*V2+V1)*(V3-2.0*V2+V1) + 0.25*(3.0*V3-4.0*V2+V1)*(3.0*V3-4.0*V2+V1);
 
     s55 = amrex::Math::abs(s11-s33);
 
@@ -177,30 +201,32 @@ reconstruction_y (int i, int j, int k, int n,
     a3 = 3.0*s33;
     invsum = 1.0/(a1+a2+a3);
 
-    v1 = 11.0*V4-7.0*V5+2.0*V6;
-    v2 = -V5+5.0*V4+2.0*V3;
-    v3 = 2.0*V4+5.0*V3-V2;
-    qr(i,j,k,n) = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    v1 = 11.0*V3-7.0*V4+2.0*V5;
+    v2 = -V4+5.0*V3+2.0*V2;
+    v3 = 2.0*V3+5.0*V2-V1;
+    fmy = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    fyfab(i,j,k,n) = fpy+fmy;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
 reconstruction_z (int i, int j, int k, int n,
-             amrex::Array4<amrex::Real> const& ql,
-             amrex::Array4<amrex::Real> const& qr,
-             amrex::Array4<amrex::Real const> const& q,
+             amrex::Array4<amrex::Real const> const& fp,
+             amrex::Array4<amrex::Real const> const& fm,
+             amrex::Array4<amrex::Real> const& fzfab,
              Parm const& parm) noexcept
 {
     using amrex::Real;
+    Real fpz,fmz;
+
     Real eps = 1e-6;
 
-    Real V1 = q(i,j,k-3,n);
-    Real V2 = q(i,j,k-2,n);
-    Real V3 = q(i,j,k-1,n);
-    Real V4 = q(i,j,k,n);
-    Real V5 = q(i,j,k+1,n);
-    Real V6 = q(i,j,k+2,n);
+    Real V1 = fp(i,j,k-3,n);
+    Real V2 = fp(i,j,k-2,n);
+    Real V3 = fp(i,j,k-1,n);
+    Real V4 = fp(i,j,k,n);
+    Real V5 = fp(i,j,k+1,n);
 
     // qL
     Real s11 = (13.0/12.0)*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 0.25*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
@@ -221,12 +247,18 @@ reconstruction_z (int i, int j, int k, int n,
     Real v1 = 2.0*V1-7.0*V2+11.0*V3;
     Real v2 = -V2+5.0*V3+2.0*V4;
     Real v3 = 2.0*V3+5.0*V4-V5;
-    ql(i,j,k,n) = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    fpz = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+
+    V1 = fm(i,j,k-2,n);
+    V2 = fm(i,j,k-1,n);
+    V3 = fm(i,j,k,n);
+    V4 = fm(i,j,k+1,n);
+    V5 = fm(i,j,k+2,n);
 
     // qR
-    s11 = (13.0/12.0)*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 0.25*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
-    s22 = (13.0/12.0)*(V3-2.0*V4+V5)*(V3-2.0*V4+V5) + 0.25*(V5-V3)*(V5-V3);
-    s33 = (13.0/12.0)*(V4-2.0*V3+V2)*(V4-2.0*V3+V2) + 0.25*(3.0*V4-4.0*V3+V2)*(3.0*V4-4.0*V3+V2);
+    s11 = (13.0/12.0)*(V5-2.0*V4+V3)*(V5-2.0*V4+V3) + 0.25*(V5-4.0*V4+3.0*V3)*(V5-4.0*V4+3.0*V3);
+    s22 = (13.0/12.0)*(V2-2.0*V3+V4)*(V2-2.0*V3+V4) + 0.25*(V4-V2)*(V4-V2);
+    s33 = (13.0/12.0)*(V3-2.0*V2+V1)*(V3-2.0*V2+V1) + 0.25*(3.0*V3-4.0*V2+V1)*(3.0*V3-4.0*V2+V1);
 
     s55 = amrex::Math::abs(s11-s33);
 
@@ -239,10 +271,11 @@ reconstruction_z (int i, int j, int k, int n,
     a3 = 3.0*s33;
     invsum = 1.0/(a1+a2+a3);
 
-    v1 = 11.0*V4-7.0*V5+2.0*V6;
-    v2 = -V5+5.0*V4+2.0*V3;
-    v3 = 2.0*V4+5.0*V3-V2;
-    qr(i,j,k,n) = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    v1 = 11.0*V3-7.0*V4+2.0*V5;
+    v2 = -V4+5.0*V3+2.0*V2;
+    v3 = 2.0*V3+5.0*V2-V1;
+    fmz = (1.0/6.0)*invsum*(a1*v1+a2*v2+a3*v3);
+    fzfab(i,j,k,n) = fpz+fmz;
 }
 
 // // 5th order TENO
@@ -250,18 +283,20 @@ reconstruction_z (int i, int j, int k, int n,
 // AMREX_FORCE_INLINE
 // void
 // reconstruction_x (int i, int j, int k, int n,
-//              amrex::Array4<amrex::Real> const& ql,
-//              amrex::Array4<amrex::Real> const& qr,
-//              amrex::Array4<amrex::Real const> const& q,
+//              amrex::Array4<amrex::Real const> const& ql,
+//              amrex::Array4<amrex::Real const> const& qr,
+//              amrex::Array4<amrex::Real> const& fxfab,
 //              Parm const& parm) noexcept
 // {
 //     using amrex::Real;
-//     Real V1 = q(i-3,j,k,n);
-//     Real V2 = q(i-2,j,k,n);
-//     Real V3 = q(i-1,j,k,n);
-//     Real V4 = q(i,j,k,n);
-//     Real V5 = q(i+1,j,k,n);
-//     Real V6 = q(i+2,j,k,n);
+//     Real fp,fm;
+
+//     Real V1 = ql(i-3,j,k,n);
+//     Real V2 = ql(i-2,j,k,n);
+//     Real V3 = ql(i-1,j,k,n);
+//     Real V4 = ql(i,j,k,n);
+//     Real V5 = ql(i+1,j,k,n);
+//     Real V6 = ql(i+2,j,k,n);
 
 //     // qL
 //     Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
@@ -300,7 +335,14 @@ reconstruction_z (int i, int j, int k, int n,
 //     Real w2 = a2*invsum;
 //     Real w3 = a3*invsum;
 
-//     ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
+//     fp = V3+w1*v1+w2*v2+w3*v3;
+
+//     V1 = qr(i-3,j,k,n);
+//     V2 = qr(i-2,j,k,n);
+//     V3 = qr(i-1,j,k,n);
+//     V4 = qr(i,j,k,n);
+//     V5 = qr(i+1,j,k,n);
+//     V6 = qr(i+2,j,k,n);
 
 //     // qR
 //     s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
@@ -338,25 +380,29 @@ reconstruction_z (int i, int j, int k, int n,
 //     w2 = a2*invsum;
 //     w3 = a3*invsum;
 
-//     qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
+//     fm = V4+w1*v1+w2*v2+w3*v3;
+//     fxfab(i,j,k,n) = fp+fm;
+
 // }
 
 // AMREX_GPU_DEVICE
 // AMREX_FORCE_INLINE
 // void
 // reconstruction_y (int i, int j, int k, int n,
-//              amrex::Array4<amrex::Real> const& ql,
-//              amrex::Array4<amrex::Real> const& qr,
-//              amrex::Array4<amrex::Real const> const& q,
+//              amrex::Array4<amrex::Real const> const& ql,
+//              amrex::Array4<amrex::Real const> const& qr,
+//              amrex::Array4<amrex::Real> const& fyfab,
 //              Parm const& parm) noexcept
 // {
 //     using amrex::Real;
-//     Real V1 = q(i,j-3,k,n);
-//     Real V2 = q(i,j-2,k,n);
-//     Real V3 = q(i,j-1,k,n);
-//     Real V4 = q(i,j,k,n);
-//     Real V5 = q(i,j+1,k,n);
-//     Real V6 = q(i,j+2,k,n);
+//     Real fp,fm;
+
+//     Real V1 = ql(i,j-3,k,n);
+//     Real V2 = ql(i,j-2,k,n);
+//     Real V3 = ql(i,j-1,k,n);
+//     Real V4 = ql(i,j,k,n);
+//     Real V5 = ql(i,j+1,k,n);
+//     Real V6 = ql(i,j+2,k,n);
 
 //     // qL
 //     Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
@@ -395,7 +441,14 @@ reconstruction_z (int i, int j, int k, int n,
 //     Real w2 = a2*invsum;
 //     Real w3 = a3*invsum;
 
-//     ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
+//     fp = V3+w1*v1+w2*v2+w3*v3;
+
+//     V1 = qr(i,j-3,k,n);
+//     V2 = qr(i,j-2,k,n);
+//     V3 = qr(i,j-1,k,n);
+//     V4 = qr(i,j,k,n);
+//     V5 = qr(i,j+1,k,n);
+//     V6 = qr(i,j+2,k,n);
 
 //     // qR
 //     s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
@@ -433,25 +486,28 @@ reconstruction_z (int i, int j, int k, int n,
 //     w2 = a2*invsum;
 //     w3 = a3*invsum;
 
-//     qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
+//     fm = V4+w1*v1+w2*v2+w3*v3;
+//     fyfab(i,j,k,n) = fp+fm;
 // }
 
 // AMREX_GPU_DEVICE
 // AMREX_FORCE_INLINE
 // void
 // reconstruction_z (int i, int j, int k, int n,
-//              amrex::Array4<amrex::Real> const& ql,
-//              amrex::Array4<amrex::Real> const& qr,
-//              amrex::Array4<amrex::Real const> const& q,
+//              amrex::Array4<amrex::Real const> const& ql,
+//              amrex::Array4<amrex::Real const> const& qr,
+//              amrex::Array4<amrex::Real> const& fzfab,
 //              Parm const& parm) noexcept
 // {
 //     using amrex::Real;
-//     Real V1 = q(i,j,k-3,n);
-//     Real V2 = q(i,j,k-2,n);
-//     Real V3 = q(i,j,k-1,n);
-//     Real V4 = q(i,j,k,n);
-//     Real V5 = q(i,j,k+1,n);
-//     Real V6 = q(i,j,k+2,n);
+//     Real fp,fm;
+
+//     Real V1 = ql(i,j,k-3,n);
+//     Real V2 = ql(i,j,k-2,n);
+//     Real V3 = ql(i,j,k-1,n);
+//     Real V4 = ql(i,j,k,n);
+//     Real V5 = ql(i,j,k+1,n);
+//     Real V6 = ql(i,j,k+2,n);
 
 //     // qL
 //     Real s11 = 13.0*(V1-2.0*V2+V3)*(V1-2.0*V2+V3) + 3.0*(V1-4.0*V2+3.0*V3)*(V1-4.0*V2+3.0*V3);
@@ -490,7 +546,14 @@ reconstruction_z (int i, int j, int k, int n,
 //     Real w2 = a2*invsum;
 //     Real w3 = a3*invsum;
 
-//     ql(i,j,k,n) = V3+w1*v1+w2*v2+w3*v3;
+//     fp = V3+w1*v1+w2*v2+w3*v3;
+
+//     V1 = qr(i,j,k-3,n);
+//     V2 = qr(i,j,k-2,n);
+//     V3 = qr(i,j,k-1,n);
+//     V4 = qr(i,j,k,n);
+//     V5 = qr(i,j,k+1,n);
+//     V6 = qr(i,j,k+2,n);
 
 //     // qR
 //     s11 = 13.0*(V6-2.0*V5+V4)*(V6-2.0*V5+V4) + 3.0*(V6-4.0*V5+3.0*V4)*(V6-4.0*V5+3.0*V4);
@@ -528,7 +591,8 @@ reconstruction_z (int i, int j, int k, int n,
 //     w2 = a2*invsum;
 //     w3 = a3*invsum;
 
-//     qr(i,j,k,n) = V4+w1*v1+w2*v2+w3*v3;
+//     fm = V4+w1*v1+w2*v2+w3*v3;
+//     fzfab(i,j,k,n) = fp+fm;
 // }
 
 #endif

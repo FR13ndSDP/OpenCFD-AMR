@@ -2,8 +2,7 @@
 
 void Parm::Initialize ()
 {
-    constexpr auto Ru = amrex::Real(8.31451);
-    Rg = Ru/eos_m;
+    Rg = 8.31446261815324/eos_m;
     cv = Rg / (eos_gamma-amrex::Real(1.0));
     cp = eos_gamma * cv;
     kOverMu = cp/Pr;

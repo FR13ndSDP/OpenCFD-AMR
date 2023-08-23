@@ -5,5 +5,6 @@ target_sources(ebamr
           prob.H
           prob.cpp
           prob_parm.H
+          prob_parm.cpp
           prob_bcfill.cpp
 )

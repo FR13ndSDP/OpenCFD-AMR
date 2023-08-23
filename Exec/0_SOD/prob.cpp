@@ -20,12 +20,6 @@ extern "C" {
         pp.query("u_l", EBR::h_prob_parm->u_l);
         pp.query("u_r", EBR::h_prob_parm->u_r);
 
-#ifdef AMREX_USE_GPU
-        // Cannot use Gpu::copy because ProbParm is not trivailly copyable.
-        Gpu::htod_memcpy_async(EBR::d_prob_parm, EBR::h_prob_parm, sizeof(ProbParm));
-#else
-        std::memcpy(EBR::d_prob_parm, EBR::h_prob_parm, sizeof(ProbParm));
-#endif
-        Gpu::streamSynchronize();
+        Gpu::copy(amrex::Gpu::hostToDevice, EBR::h_prob_parm, EBR::h_prob_parm+1, EBR::d_prob_parm);
     }
 }
