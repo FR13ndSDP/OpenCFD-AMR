@@ -16,7 +16,12 @@
 #define QT     5
 #define QC     6
 #define QE     7 // rho*e
+#ifdef CHEM
+#define QGAMA  8
+#define NPRIM  9
+#else
 #define NPRIM  8
+#endif
 
 #define NTHREADS 256
 

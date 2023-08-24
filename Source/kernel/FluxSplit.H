@@ -22,11 +22,9 @@ void flux_split_x(int i, int j, int k,
   Real w = q(i, j, k, QW);
   Real c = q(i, j, k, QC);
 #ifndef CHEM
-    Real gamma = parm.eos_gamma;
+  Real gamma = parm.eos_gamma;
 #else
-    Real p = q(i, j, k, QPRES);
-    Real e = q(i, j, k, QE);
-    Real gamma = 1.0 + p/e;
+  Real gamma = q(i,j,k,QGAMA);
 #endif
 
   Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
@@ -85,11 +83,9 @@ void flux_split_y(int i, int j, int k,
   Real w = q(i, j, k, QW);
   Real c = q(i, j, k, QC);
 #ifndef CHEM
-    Real gamma = parm.eos_gamma;
+  Real gamma = parm.eos_gamma;
 #else
-    Real p = q(i, j, k, QPRES);
-    Real e = q(i, j, k, QE);
-    Real gamma = 1.0 + p/e;
+  Real gamma = q(i,j,k,QGAMA);
 #endif
 
   Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
@@ -147,11 +143,9 @@ void flux_split_z(int i, int j, int k,
   Real w = q(i, j, k, QW);
   Real c = q(i, j, k, QC);
 #ifndef CHEM
-    Real gamma = parm.eos_gamma;
+  Real gamma = parm.eos_gamma;
 #else
-    Real p = q(i, j, k, QPRES);
-    Real e = q(i, j, k, QE);
-    Real gamma = 1.0 + p/e;
+  Real gamma = q(i,j,k,QGAMA);
 #endif
 
   Real tmp1 = Real(1.0) / (Real(2.0) * gamma);

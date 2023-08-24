@@ -56,7 +56,7 @@ c2prim_rgas (int i, int j, int k,
     Real uz = u(i,j,k,UMZ)*rhoinv;
     Real kineng = Real(0.5)*(ux*ux+uy*uy+uz*uz);
     Real ei = u(i,j,k,UEDEN) - rho * kineng;
-    Real T, p, rhoi[NSPECS];
+    Real T, p, rhoi[NSPECS], gama;
 
     q(i,j,k,QRHO) = rho;
     q(i,j,k,QU) = ux;
@@ -71,7 +71,10 @@ c2prim_rgas (int i, int j, int k,
     CKPY(rhoi, T, p);
     q(i,j,k,QT) = T;
     q(i,j,k,QPRES) = p;
-    q(i,j,k,QC) = std::sqrt((1+p/ei)*p/rho);
+
+    CKGAMMA(T, rhoi, gama);
+    q(i,j,k,QGAMA) = gama;
+    q(i,j,k,QC) = std::sqrt(gama*p/rho);
 }
 
 AMREX_GPU_DEVICE

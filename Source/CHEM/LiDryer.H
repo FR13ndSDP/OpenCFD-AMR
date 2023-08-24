@@ -816,6 +816,22 @@ void CKCVBS(Real T, Real *rhoi, Real &cvbs) noexcept {
   cvbs = result* Ru;
 }
 
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void CKGAMMA(Real T, Real *rhoi, Real &gamma) noexcept {
+  Real cp = 0, cv = 0;
+  Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
+  Real cpor[NSPECS];                                   /* temporary storage */
+  cp_R(cpor, tc);
+  /*multiply by y/molecularweight */
+  for (int n = 0; n < NSPECS; ++n) {
+    cp += cpor[n] * rhoi[n] / mw[n];
+    cv += (cpor[n]- 1.0) * rhoi[n] / mw[n];
+  }
+
+  gamma = cp/cv;
+}
+
 /* get temperature given internal energy in mass units and mass fracs */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE

@@ -794,6 +794,21 @@ void CKCVBS(double T, double *rhoi, double &cvbs) {
   cvbs =  result * Ru;
 }
 
+/*J/(m^3 K)*/
+void CKGAMMA(double T, double *rhoi, double &gamma) {
+  double cp = 0, cv = 0;
+  double tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
+  double cpor[NSPECS];                                   /* temporary storage */
+  cp_R(cpor, tc);
+  /*multiply by y/molecularweight */
+  for (int n = 0; n < NSPECS; ++n) {
+    cp += cpor[n] * rhoi[n] / mw[n];
+    cv += (cpor[n]-1.0) * rhoi[n] / mw[n];
+  }
+
+  gamma = cp/cv;
+}
+
 /* get temperature given internal energy in mass units and mass fracs */
 void GET_T_GIVEN_EY(double e, double *rhoi, double &T) {
   const int maxiter = 200;
@@ -902,7 +917,7 @@ int main() {
   double rho;
   double Et = 0;
   double t_end = 1e-6;
-  double time;
+  double time, gamma;
 
   double rhoi[NSPECS] = {0.0}, Xt[NSPECS] = {0.0}, Yt[NSPECS] = {0.0},
          rhoi_1[NSPECS] = {0.0};
@@ -979,12 +994,15 @@ int main() {
     // output 
     CKYTX(Yt, Xt);
     CKPY(rhoi, T, p);
+    CKGAMMA(T, rhoi, gamma);
     // CKUBMS(T, rhoi, Et);
     cout.precision(12);
     cout << "---------------\nTime = " << time << " s" << endl;
     cout << "T = " << T << " K" << endl;
     cout << "P = " << p << " Pa" << endl;
     cout << "E = " << Et << endl;
+    cout << "gamma = " << gamma << " " << 1.0 + p/Et << endl;
+    cout << "C = " << sqrt(gamma*p/rho) << " " << sqrt((1.0+p/Et)*p/rho) << endl;
     cout << "Mol frac of H2:  " << Xt[0] << endl;
     cout << "Mol frac of O2:  " << Xt[1] << endl;
     cout << "Mol frac of H2O: " << Xt[2] << endl;
