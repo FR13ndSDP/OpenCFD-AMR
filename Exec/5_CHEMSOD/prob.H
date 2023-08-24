@@ -26,12 +26,11 @@ ebr_initdata (int i, int j, int k, amrex::Array4<amrex::Real> const& state,
     const Real* prob_lo = geomdata.ProbLo();
     const Real* dx      = geomdata.CellSize();
     Real Xt[NSPECS] = {0.0}, Yt[NSPECS], rhoi[NSPECS];
-    Xt[0] = 0.666666;
-    Xt[1] = 0.333333;
-    Xt[8] = 1.0 - Xt[0] - Xt[1];
+    Xt[0] = 0.667;
+    Xt[1] = 0.333;
 
     Real x = prob_lo[0] + (i+Real(0.5))*dx[0];
-    if (x < 0.001) {
+    if (x < 0.0004) {
         Pt = prob_parm.p0;
         temp = prob_parm.T0;
     }
@@ -67,9 +66,8 @@ ebr_initspec (int i, int j, int k,
     // const Real* prob_lo = geomdata.ProbLo();
     // const Real* dx      = geomdata.CellSize();
     Real Xt[NSPECS] = {0.0}, Yt[NSPECS], rhoi[NSPECS];
-    Xt[0] = 0.666666;
-    Xt[1] = 0.333333;
-    Xt[8] = 1.0 - Xt[0] - Xt[1];
+    Xt[0] = 0.667;
+    Xt[1] = 0.333;
 
     CKXTY(Xt, Yt);
 
