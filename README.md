@@ -7,6 +7,6 @@
 - [x] Full EB support on GPU
 - [x] HDF5 output 
 - [x] Specie transport
-- [ ] Chemical reaction
+- [x] Chemical reaction
 - [ ] High order methods
 - [ ] LES modeling

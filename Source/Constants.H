@@ -11,6 +11,7 @@ struct Parm
 
     amrex::Real cv;
     amrex::Real cp;
+    amrex::Real Ru = 8.31446261815324;
     amrex::Real Rg;
     amrex::Real kOverMu;
 

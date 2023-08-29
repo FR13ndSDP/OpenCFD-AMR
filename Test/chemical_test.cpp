@@ -911,12 +911,12 @@ void gauss(double *x, double (&A)[NSPECS][NSPECS], double *b) {
 }
 
 int main() {
-  double dt = 5e-9;
-  double T = 1500;
-  double p = 20.0 * Patm;
+  double dt = 1e-5;
+  double T = 305;
+  double p = Patm;
   double rho;
   double Et = 0;
-  double t_end = 1e-6;
+  double t_end = 1e-3;
   double time, gamma;
 
   double rhoi[NSPECS] = {0.0}, Xt[NSPECS] = {0.0}, Yt[NSPECS] = {0.0},
@@ -927,15 +927,10 @@ int main() {
   ofstream ofile;
   ofile.open("molfrac.csv", ios::out);
 
-  Xt[0] = 66.666/ 100;
-  Xt[1] = 33.333/ 100;
-  Xt[8] = 1.0 - Xt[0] - Xt[1];
+  Xt[0] = 0.15;
+  Xt[8] = 0.85;
 
   CKXTY(Xt, Yt);
-
-  for (auto i:Yt) {
-    cout << i << endl;
-  }
 
   CKRHOY(p, T, Yt, rho);
   for (int n = 0; n < NSPECS; ++n) {
@@ -946,68 +941,69 @@ int main() {
 
   CKUBMS(T, rhoi, Et);
   cout.precision(18);
+  cout << "rho = " << rho << endl;
   cout << "E = " << Et << endl;
 
-  int niter = ceil(t_end / dt);
+  // int niter = ceil(t_end / dt);
 
-  for (int iter = 0; iter < niter; ++iter) {
+  // for (int iter = 0; iter < niter; ++iter) {
 
-    GET_T_GIVEN_EY(Et, rhoi, T);
+  //   GET_T_GIVEN_EY(Et, rhoi, T);
 
-    double c[9];
-    for (int n = 0; n < NSPECS; n++) {
-      c[n] = rhoi[n] / mw[n] * 1e-6;
-    }
+  //   double c[9];
+  //   for (int n = 0; n < NSPECS; n++) {
+  //     c[n] = rhoi[n] / mw[n] * 1e-6;
+  //   }
 
-    /*call productionRate */
-    vproductionRate(wdot, Arate, c, T);
+  //   /*call productionRate */
+  //   vproductionRate(wdot, Arate, c, T);
 
-    for (int i = 0; i < NSPECS; ++i) {
-      for (int j = 0; j < NSPECS; ++j) {
-        A1[i][j] = (i == j ? 1.0 : 0.0);
-        A1[i][j] -= Arate[i][j] * mw[i] / mw[j] * dt;
-      }
-    }
+  //   for (int i = 0; i < NSPECS; ++i) {
+  //     for (int j = 0; j < NSPECS; ++j) {
+  //       A1[i][j] = (i == j ? 1.0 : 0.0);
+  //       A1[i][j] -= Arate[i][j] * mw[i] / mw[j] * dt;
+  //     }
+  //   }
 
-    for (int n = 0; n < NSPECS; ++n) {
-      rhoi_1[n] = wdot[n] * mw[n] * 1e6 * dt;
-    }
+  //   for (int n = 0; n < NSPECS; ++n) {
+  //     rhoi_1[n] = wdot[n] * mw[n] * 1e6 * dt;
+  //   }
 
-    gauss(drho, A1, rhoi_1);
+  //   gauss(drho, A1, rhoi_1);
 
-    for (int n = 0; n < NSPECS; ++n) {
-      rhoi[n] += drho[n];
-      if (rhoi[n] < 0) rhoi[n] =0;
-    }
+  //   for (int n = 0; n < NSPECS; ++n) {
+  //     rhoi[n] += drho[n];
+  //     if (rhoi[n] < 0) rhoi[n] =0;
+  //   }
 
-    // update Yt
-    for (int n = 0; n < NSPECS; ++n) {
-      Yt[n] = rhoi[n] / rho;
-    }
+  //   // update Yt
+  //   for (int n = 0; n < NSPECS; ++n) {
+  //     Yt[n] = rhoi[n] / rho;
+  //   }
 
-    for (int n=0; n<NSPECS; ++n) {
-      Et -= HP[n] * Ru / mw[n] * drho[n];
-    }
+  //   for (int n=0; n<NSPECS; ++n) {
+  //     Et -= HP[n] * Ru / mw[n] * drho[n];
+  //   }
 
-    time = (iter + 1) * dt;
+  //   time = (iter + 1) * dt;
 
-    // output 
-    CKYTX(Yt, Xt);
-    CKPY(rhoi, T, p);
-    CKGAMMA(T, rhoi, gamma);
-    // CKUBMS(T, rhoi, Et);
-    cout.precision(12);
-    cout << "---------------\nTime = " << time << " s" << endl;
-    cout << "T = " << T << " K" << endl;
-    cout << "P = " << p << " Pa" << endl;
-    cout << "E = " << Et << endl;
-    cout << "gamma = " << gamma << " " << 1.0 + p/Et << endl;
-    cout << "C = " << sqrt(gamma*p/rho) << " " << sqrt((1.0+p/Et)*p/rho) << endl;
-    cout << "Mol frac of H2:  " << Xt[0] << endl;
-    cout << "Mol frac of O2:  " << Xt[1] << endl;
-    cout << "Mol frac of H2O: " << Xt[2] << endl;
-    ofile << time << " " << T << " " << Yt[0] << " " << Yt[1] << " " << Yt[2] << endl;
-  }
+  //   // output 
+  //   CKYTX(Yt, Xt);
+  //   CKPY(rhoi, T, p);
+  //   CKGAMMA(T, rhoi, gamma);
+  //   // CKUBMS(T, rhoi, Et);
+  //   cout.precision(12);
+  //   cout << "---------------\nTime = " << time << " s" << endl;
+  //   cout << "T = " << T << " K" << endl;
+  //   cout << "P = " << p << " Pa" << endl;
+  //   cout << "E = " << Et << endl;
+  //   cout << "gamma = " << gamma << " " << 1.0 + p/Et << endl;
+  //   cout << "C = " << sqrt(gamma*p/rho) << " " << sqrt((1.0+p/Et)*p/rho) << endl;
+  //   cout << "Mol frac of H2:  " << Xt[0] << endl;
+  //   cout << "Mol frac of O2:  " << Xt[1] << endl;
+  //   cout << "Mol frac of H2O: " << Xt[2] << endl;
+  //   ofile << time << " " << T << " " << Yt[0] << " " << Yt[1] << " " << Yt[2] << endl;
+  // }
   ofile.close();
   return 0;
 }

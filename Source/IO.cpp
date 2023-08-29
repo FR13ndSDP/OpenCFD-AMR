@@ -29,7 +29,6 @@ void EBR::checkPoint(const std::string &dir, std::ostream &os, VisMF::How how, b
     AmrLevel::checkPoint(dir, os, how, dump_old);
 }
 
-// TODO: Add proper HDF5 output
 void EBR::writePlotFile(const std::string &dir, std::ostream &os, VisMF::How how)
 {
     BL_PROFILE("EBR::writePlotFile()");

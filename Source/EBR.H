@@ -188,13 +188,11 @@ protected:
   static constexpr int NUM_GROW = 4;
 
   // conservative states
-#ifdef CHEM
   enum StateVariable { Density = 0, Xmom, Ymom, Zmom, Eden, NUM_STATE };
 
+#ifdef CHEM
   enum StateType {State_Type = 0, Spec_Type = 1, NUM_STATE_TYPE};
 #else
-  enum StateVariable { Density = 0, Xmom, Ymom, Zmom, Eden, NUM_STATE };
-
   enum StateType { State_Type = 0, NUM_STATE_TYPE };
 #endif
 

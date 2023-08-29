@@ -695,6 +695,88 @@ void speciesInternalEnergy(Real *species, Real *tc) noexcept {
   return;
 }
 
+// species enthalpy, dimension: J/kg
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void speciesEnthalpy(Real T, Real* species) noexcept {
+  Real tc[] = {T, T * T, T * T * T, T * T * T * T, T*T*T*T*T};
+
+  /*species with midpoint at T=1000 kelvin */
+  if (T < 1000) {
+    /*species 0: H2 */
+    species[0] = H2_lo[0] * tc[0] + H2_lo[1] / 2.0 * tc[1] +
+                 H2_lo[2] / 3.0 * tc[2] + H2_lo[3] / 4.0 * tc[3] +
+                 H2_lo[4] / 5.0 * tc[4];
+    /*species 1: O2 */
+    species[1] = O2_lo[0] * tc[0] + O2_lo[1] / 2.0 * tc[1] +
+                 O2_lo[2] / 3.0 * tc[2] + O2_lo[3] / 4.0 * tc[3] +
+                 O2_lo[4] / 5.0 * tc[4];
+    /*species 2: H2O */
+    species[2] = H2O_lo[0] * tc[0] + H2O_lo[1] / 2.0 * tc[1] +
+                 H2O_lo[2] / 3.0 * tc[2] + H2O_lo[3] / 4.0 * tc[3] +
+                 H2O_lo[4] / 5.0 * tc[4];
+    /*species 3: H */
+    species[3] = H_lo[0] * tc[0] + H_lo[1] / 2.0 * tc[1] + H_lo[2] / 3.0 * tc[2] +
+                 H_lo[3] / 4.0 * tc[3] + H_lo[4] / 5.0 * tc[4];
+    /*species 4: O */
+    species[4] = O_lo[0] * tc[0] + O_lo[1] / 2.0 * tc[1] + O_lo[2] / 3.0 * tc[2] +
+                 O_lo[3] / 4.0 * tc[3] + O_lo[4] / 5.0 * tc[4];
+    /*species 5: OH */
+    species[5] = OH_lo[0] * tc[0] + OH_lo[1] / 2.0 * tc[1] +
+                 OH_lo[2] / 3.0 * tc[2] + OH_lo[3] / 4.0 * tc[3] +
+                 OH_lo[4] / 5.0 * tc[4];
+    /*species 6: HO2 */
+    species[6] = HO2_lo[0] * tc[0] + HO2_lo[1] / 2.0 * tc[1] +
+                 HO2_lo[2] / 3.0 * tc[2] + HO2_lo[3] / 4.0 * tc[3] +
+                 HO2_lo[4] / 5.0 * tc[4];
+    /*species 7: H2O2 */
+    species[7] = H2O2_lo[0] * tc[0] + H2O2_lo[1] / 2.0 * tc[1] +
+                 H2O2_lo[2] / 3.0 * tc[2] + H2O2_lo[3] / 4.0 * tc[3] +
+                 H2O2_lo[4] / 5.0 * tc[4];
+    /*species 8: N2 */
+    species[8] = N2_lo[0] * tc[0] + N2_lo[1] / 2.0 * tc[1] +
+                 N2_lo[2] / 3.0 * tc[2] + N2_lo[3] / 4.0 * tc[3] +
+                 N2_lo[4] / 5.0 * tc[4];
+  } else {
+    species[0] = H2_hi[0] * tc[0] + H2_hi[1] / 2.0 * tc[1] +
+                 H2_hi[2] / 3.0 * tc[2] + H2_hi[3] / 4.0 * tc[3] +
+                 H2_hi[4] / 5.0 * tc[4] + (H2_hi[5] - H2_lo[5]);
+    /*species 1: O2 */
+    species[1] = O2_hi[0] * tc[0] + O2_hi[1] / 2.0 * tc[1] +
+                 O2_hi[2] / 3.0 * tc[2] + O2_hi[3] / 4.0 * tc[3] +
+                 O2_hi[4] / 5.0 * tc[4] + (O2_hi[5] - O2_lo[5]);
+    /*species 2: H2O */
+    species[2] = H2O_hi[0] * tc[0] + H2O_hi[1] / 2.0 * tc[1] +
+                 H2O_hi[2] / 3.0 * tc[2] + H2O_hi[3] / 4.0 * tc[3] +
+                 H2O_hi[4] / 5.0 * tc[4] + (H2O_hi[5] - H2O_lo[5]);
+    /*species 3: H */
+    species[3] = H_hi[0] * tc[0] + H_hi[1] / 2.0 * tc[1] + H_hi[2] / 3.0 * tc[2] +
+                 H_hi[3] / 4.0 * tc[3] + H_hi[4] / 5.0 * tc[4] +
+                 (H_hi[5] - H_lo[5]);
+    /*species 4: O */
+    species[4] = O_hi[0] * tc[0] + O_hi[1] / 2.0 * tc[1] + O_hi[2] / 3.0 * tc[2] +
+                 O_hi[3] / 4.0 * tc[3] + O_hi[4] / 5.0 * tc[4] +
+                 (O_hi[5] - O_lo[5]);
+    /*species 5: OH */
+    species[5] = OH_hi[0] * tc[0] + OH_hi[1] / 2.0 * tc[1] +
+                 OH_hi[2] / 3.0 * tc[2] + OH_hi[3] / 4.0 * tc[3] +
+                 OH_hi[4] / 5.0 * tc[4] + (OH_hi[5] - OH_lo[5]);
+    /*species 6: HO2 */
+    species[6] = HO2_hi[0] * tc[0] + HO2_hi[1] / 2.0 * tc[1] +
+                 HO2_hi[2] / 3.0 * tc[2] + HO2_hi[3] / 4.0 * tc[3] +
+                 HO2_hi[4] / 5.0 * tc[4] + (HO2_hi[5] - HO2_lo[5]);
+    /*species 7: H2O2 */
+    species[7] = H2O2_hi[0] * tc[0] + H2O2_hi[1] / 2.0 * tc[1] +
+                 H2O2_hi[2] / 3.0 * tc[2] + H2O2_hi[3] / 4.0 * tc[3] +
+                 H2O2_hi[4] / 5.0 * tc[4] + (H2O2_hi[5] - H2O2_lo[5]);
+    /*species 8: N2 */
+    species[8] = N2_hi[0] * tc[0] + N2_hi[1] / 2.0 * tc[1] +
+                 N2_hi[2] / 3.0 * tc[2] + N2_hi[3] / 4.0 * tc[3] +
+                 N2_hi[4] / 5.0 * tc[4] + (N2_hi[5] - N2_lo[5]);
+  }
+  return;
+}
+
 /*get mean internal energy in volume unit */
 /* SI unit*/
 /* J/m^3*/

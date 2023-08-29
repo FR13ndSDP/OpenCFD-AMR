@@ -1,7 +1,9 @@
 #ifndef KERNELS_H
 #define KERNELS_H
 
+#ifdef CHEM
 #include "LiDryer.H"
+#endif
 #include <IndexDefines.H>
 #include <Constants.H>
 #include <AMReX_FArrayBox.H>
@@ -35,9 +37,9 @@ c2prim (int i, int j, int k,
     q(i,j,k,QPRES) = p;
     q(i,j,k,QT) = T;
     q(i,j,k,QC) = std::sqrt(parm.eos_gamma*parm.Rg*T);
-    q(i,j,k,QE) = ei;
 }
 
+#ifdef CHEM
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
@@ -62,7 +64,6 @@ c2prim_rgas (int i, int j, int k,
     q(i,j,k,QU) = ux;
     q(i,j,k,QV) = uy;
     q(i,j,k,QW) = uz;
-    q(i,j,k,QE) = ei;
     
     for (int n=0; n<NSPECS; ++n) {
         rhoi[n] = spec(i,j,k,n);
@@ -76,6 +77,7 @@ c2prim_rgas (int i, int j, int k,
     q(i,j,k,QGAMA) = gama;
     q(i,j,k,QC) = std::sqrt(gama*p/rho);
 }
+#endif
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE

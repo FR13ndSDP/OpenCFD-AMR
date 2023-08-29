@@ -51,8 +51,10 @@ ebr_estdt (amrex::Box const& bx, amrex::Array4<Real const> const& state,
         }
     }
 
-    //TODO: fix dt
+    //TODO: fix dt for chem now
+#ifdef CHEM
     dt = 1e-8;
+#endif
     return dt;
 }
 
@@ -312,7 +314,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     ParallelFor<NTHREADS>(bx, ncomp,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
-                        divop(i,j,k,n,dsdtfab,AMREX_D_DECL(fxfab, fyfab, fzfab), dxinv);
+                        divop(i,j,k,n,dsdtfab,fxfab, fyfab, fzfab, dxinv);
                     });
 
                     if (do_gravity) {

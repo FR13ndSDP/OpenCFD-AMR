@@ -2,7 +2,7 @@
 #include "Reconstruction.H"
 #include "Kernels.H"
 #include "FluxSplit.H"
-#include "Diffusion.H"
+#include "CHEM_viscous.H"
 
 using namespace amrex;
 
@@ -292,15 +292,13 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                 reconstruction_x(i,j,k,n,fp,fm,fxfab,*lparm);
             });
 
-
-// TODO: visc
-            // if (do_visc) {
-            //     ParallelFor<NTHREADS>(xflxbx,
-            //     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-            //     {
-            //         compute_visc_x_multi(i,j,k,q,fxfab,dxinv,*lparm);
-            //     });
-            // }
+            if (do_visc) {
+                ParallelFor<NTHREADS>(xflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    compute_visc_x_multi(i,j,k,q,rhoi,fxfab,dxinv,*lparm);
+                });
+            }
 
             // Y-direction
             cdir = 1;
@@ -318,13 +316,13 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                 reconstruction_y(i,j,k,n,fp,fm,fyfab,*lparm);
             });
 
-            // if (do_visc) {
-            //     ParallelFor<NTHREADS>(yflxbx,
-            //     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-            //     {
-            //         compute_visc_y_multi(i,j,k,q,fyfab,dxinv,*lparm);
-            //     });
-            // }
+            if (do_visc) {
+                ParallelFor<NTHREADS>(yflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    compute_visc_y_multi(i,j,k,q,rhoi,fyfab,dxinv,*lparm);
+                });
+            }
 
             // Z-direction
             cdir = 2;
@@ -342,13 +340,13 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                 reconstruction_z(i,j,k,n,fp,fm,fzfab,*lparm);
             });
 
-            // if (do_visc) {
-            //     ParallelFor<NTHREADS>(zflxbx,
-            //     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-            //     {
-            //         compute_visc_z_multi(i,j,k,q,fzfab,dxinv,*lparm);
-            //     });
-            // }
+            if (do_visc) {
+                ParallelFor<NTHREADS>(zflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    compute_visc_z_multi(i,j,k,q,rhoi,fzfab,dxinv,*lparm);
+                });
+            }
 
             ParallelFor<NTHREADS>(bx, ncomp,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept

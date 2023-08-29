@@ -15,12 +15,11 @@
 #define QPRES  4
 #define QT     5
 #define QC     6
-#define QE     7 // rho*e
 #ifdef CHEM
-#define QGAMA  8
-#define NPRIM  9
-#else
+#define QGAMA  7
 #define NPRIM  8
+#else
+#define NPRIM  7
 #endif
 
 #define NTHREADS 256

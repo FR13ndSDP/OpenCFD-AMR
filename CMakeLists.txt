@@ -18,7 +18,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Util/CMake")
 #
 set(EBAMR_DIM             "3"        CACHE STRING "Number of physical dimensions")
 set(EBAMR_PRECISION       "DOUBLE"   CACHE STRING "Floating point precision SINGLE or DOUBLE")
-set(EBAMR_CASE            "5_CHEMSOD"  CACHE STRING "Case folder")
+set(EBAMR_CASE            "7_JET"  CACHE STRING "Case folder")
 #
 # Physics options
 #
@@ -35,7 +35,7 @@ option(OPTION_ENABLE_SUNDIALS     "Enable Sundials integrator" OFF)
 #
 # HPC options
 #
-option(OPTION_MPI    "Enable MPI"    OFF)
+option(OPTION_MPI    "Enable MPI"    ON)
 option(OPTION_OPENMP "Enable OpenMP" OFF)
 option(OPTION_CUDA   "Enable CUDA"   OFF)
 option(OPTION_HIP    "Enable HIP"    OFF)
@@ -45,7 +45,7 @@ option(OPTION_SYCL   "Enable SyCL"   OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 #
 # Setup Languages

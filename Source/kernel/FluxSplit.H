@@ -155,8 +155,8 @@ void flux_split_z(int i, int j, int k,
 
   Real wc1 = w - c;
   Real wc2 = w + c;
-  Real vvc1 = 0.5 * (u * u + v * v + wc1 * wc2);
-  Real vvc2 = 0.5 * (u * u + v * v + wc1 * wc2);
+  Real vvc1 = 0.5 * (u * u + v * v + wc1 * wc1);
+  Real vvc2 = 0.5 * (u * u + v * v + wc2 * wc2);
   Real v2 = (gamma - 1) * (u * u + v * v + w * w);
   Real w2 = tmp3 * c * c;
 

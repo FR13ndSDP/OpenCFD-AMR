@@ -17,8 +17,6 @@ extern "C" {
         pp.query("p_r", EBR::h_prob_parm->p_r);
         pp.query("rho_l", EBR::h_prob_parm->rho_l);
         pp.query("rho_r", EBR::h_prob_parm->rho_r);
-        pp.query("u_l", EBR::h_prob_parm->u_l);
-        pp.query("u_r", EBR::h_prob_parm->u_r);
 
         Gpu::copy(amrex::Gpu::hostToDevice, EBR::h_prob_parm, EBR::h_prob_parm+1, EBR::d_prob_parm);
     }
