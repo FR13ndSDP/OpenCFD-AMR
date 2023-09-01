@@ -1,5 +1,5 @@
 # OpenCFD-AMR
-
+[![Documentation Status](https://readthedocs.org/projects/opencfd-amr-doc/badge/?version=latest)](https://opencfd-amr-doc.readthedocs.io/zh_CN/latest/?badge=latest)
 ## TODO-list
 
 - [x] Scheme verification: flux splitting and flux reconstruction
