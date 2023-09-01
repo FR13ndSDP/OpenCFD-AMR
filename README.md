@@ -1,4 +1,4 @@
-# ebamr-GPU
+# OpenCFD-AMR
 
 ## TODO-list
 
