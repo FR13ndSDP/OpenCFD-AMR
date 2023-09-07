@@ -82,44 +82,41 @@ static const double A0[NSPECS] = {H2_lo[0]-1.0, O2_lo[0]-1.0, H2O_lo[0]-1.0, H_l
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKPY(Real *rhoi, Real T, Real &P) noexcept {
+void CKPY(const Real *rhoi, Real T, Real &P) noexcept {
   Real YOW = 0; /* for computing mean MW */
   for (int i = 0; i < NSPECS; ++i) {
     YOW += rhoi[i] / mw[i];
   }
   P = Ru * T * YOW; /*P = rho*R*T/W */
-
-  return;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKRHOY(Real P, Real T, Real *y, Real &rho) noexcept {
+void CKRHOY(Real P, Real T, const Real *y, Real &rho) noexcept {
   Real YOW = 0;
   amrex::GpuArray<amrex::Real, NSPECS> tmp;
 
   for (int i = 0; i < NSPECS; i++) {
     tmp[i] = y[i] / mw[i];
   }
-  for (int i = 0; i < NSPECS; i++) {
-    YOW += tmp[i];
+  for (Real i : tmp) {
+    YOW += i;
   }
 
   rho = P / (Ru * T * YOW); /*rho = P*W/(R*T) */
-  return;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKYTX(Real *y, Real *x) noexcept {
+void CKYTX(const Real *y, Real *x) noexcept {
   Real YOW = 0;
   amrex::GpuArray<amrex::Real, NSPECS> tmp;
 
   for (int i = 0; i < NSPECS; i++) {
     tmp[i] = y[i] / mw[i];
   }
-  for (int i = 0; i < NSPECS; i++) {
-    YOW += tmp[i];
+  for (Real i : tmp) {
+    YOW += i;
   }
 
   Real YOWINV = 1.0 / YOW;
@@ -127,12 +124,11 @@ void CKYTX(Real *y, Real *x) noexcept {
   for (int i = 0; i < NSPECS; i++) {
     x[i] = y[i] / mw[i] * YOWINV;
   }
-  return;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKXTY(Real *x, Real *y) noexcept {
+void CKXTY(const Real *x, Real *y) noexcept {
   Real XW = 0.0; /*See Eq 4, 9 in CK Manual */
   /*Compute mean molecular wt first */
   for (int i = 0; i < NSPECS; ++i) {
@@ -142,14 +138,12 @@ void CKXTY(Real *x, Real *y) noexcept {
   for (int i = 0; i < NSPECS; ++i) {
     y[i] = x[i] * mw[i] / XW;
   }
-
-  return;
 }
 
 // gi/T, gi = g/Ri
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void gibbs(Real *species, Real *tc) noexcept {
+void gibbs(Real *species, const Real *tc) noexcept {
   /*temperature */
   Real T = tc[1];
   Real invT = 1 / T;
@@ -230,13 +224,11 @@ void gibbs(Real *species, Real *tc) noexcept {
                  N2_hi[2] / 6.0 * tc[2] - N2_hi[3] / 12.0 * tc[3] -
                  N2_hi[4] / 20.0 * tc[4] + N2_hi[5] * invT - N2_hi[6];
   }
-
-  return;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void vproductionRate(Real *wdot, Real (&Arate)[NSPECS][NSPECS], Real *sc,
+void vproductionRate(Real *wdot, Real (&Arate)[NSPECS][NSPECS], const Real *sc,
                      Real T) noexcept {
   Real k_f_s[21], Kc_s[21], mixture, gi_T[NSPECS];
   Real tc[5], invT;
@@ -613,7 +605,7 @@ void vproductionRate(Real *wdot, Real (&Arate)[NSPECS][NSPECS], Real *sc,
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void speciesInternalEnergy(Real *species, Real *tc) noexcept {
+void speciesInternalEnergy(Real *species, const Real *tc) noexcept {
 
   /*temperature */
   Real T = tc[1];
@@ -692,7 +684,6 @@ void speciesInternalEnergy(Real *species, Real *tc) noexcept {
                  N2_hi[2] / 3.0 * tc[2] + N2_hi[3] / 4.0 * tc[3] +
                  N2_hi[4] / 5.0 * tc[4] + (N2_hi[5] - N2_lo[5])* invT;
   }
-  return;
 }
 
 // species enthalpy, dimension: J/kg
@@ -774,7 +765,6 @@ void speciesEnthalpy(Real T, Real* species) noexcept {
                  N2_hi[2] / 3.0 * tc[2] + N2_hi[3] / 4.0 * tc[3] +
                  N2_hi[4] / 5.0 * tc[4] + (N2_hi[5] - N2_lo[5]);
   }
-  return;
 }
 
 /*get mean internal energy in volume unit */
@@ -782,7 +772,7 @@ void speciesEnthalpy(Real T, Real* species) noexcept {
 /* J/m^3*/
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKUBMS(Real T, Real *rhoi, Real &ubms) noexcept {
+void CKUBMS(Real T, const Real *rhoi, Real &ubms) noexcept {
   Real result = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real ums[NSPECS]; /* temporary energy array */
@@ -800,7 +790,7 @@ void CKUBMS(Real T, Real *rhoi, Real &ubms) noexcept {
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void cp_R(Real *species, Real *tc) noexcept {
+void cp_R(Real *species, const Real *tc) noexcept {
 
   /*temperature */
   Real T = tc[1];
@@ -863,13 +853,12 @@ void cp_R(Real *species, Real *tc) noexcept {
     species[8] = N2_hi[0] + N2_hi[1] * tc[1] + N2_hi[2] * tc[2] +
                  N2_hi[3] * tc[3] + N2_hi[4] * tc[4];
   }
-  return;
 }
 
 /*J/(m^3 K)*/
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKCPBS(Real T, Real *rhoi, Real &cvbs) noexcept {
+void CKCPBS(Real T, const Real *rhoi, Real &cvbs) noexcept {
   Real result = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real cpor[NSPECS];                                   /* temporary storage */
@@ -885,7 +874,7 @@ void CKCPBS(Real T, Real *rhoi, Real &cvbs) noexcept {
 /*J/(m^3 K)*/
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKCVBS(Real T, Real *rhoi, Real &cvbs) noexcept {
+void CKCVBS(Real T, const Real *rhoi, Real &cvbs) noexcept {
   Real result = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real cpor[NSPECS];                                   /* temporary storage */
@@ -900,7 +889,7 @@ void CKCVBS(Real T, Real *rhoi, Real &cvbs) noexcept {
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKGAMMA(Real T, Real *rhoi, Real &gamma) noexcept {
+void CKGAMMA(Real T, const Real *rhoi, Real &gamma) noexcept {
   Real cp = 0, cv = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real cpor[NSPECS];                                   /* temporary storage */
@@ -969,20 +958,20 @@ void GET_T_GIVEN_EY(Real e, Real *rhoi, Real &T) noexcept {
     t1 += dt;
   }
   T = t1;
-  return;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void gauss(Real *x, Real (&A)[NSPECS][NSPECS], Real *b) noexcept {
+void gauss(Real *x, Real (&A)[NSPECS][NSPECS], const Real *b) noexcept {
   int i, j, k;
   Real U[NSPECS][NSPECS + 1];
 
   // Copy A to U and augment with vector b.
   for (i = 0; i < NSPECS; i++) {
     U[i][NSPECS] = b[i];
-    for (j = 0; j < NSPECS; j++)
+    for (j = 0; j < NSPECS; j++) {
       U[i][j] = A[i][j];
+    }
   }
 
   // Factorisation stage
@@ -999,23 +988,26 @@ void gauss(Real *x, Real (&A)[NSPECS][NSPECS], Real *b) noexcept {
 
     // Swap rows k and p
     if (p != k) {
-      for (i = k; i < NSPECS + 1; i++)
+      for (i = k; i < NSPECS + 1; i++) {
         std::swap(U[p][i], U[k][i]);
+      }
     }
 
     // Elimination of variables
     for (i = k + 1; i < NSPECS; i++) {
       Real m = U[i][k] / U[k][k];
-      for (j = k; j < NSPECS + 1; j++)
+      for (j = k; j < NSPECS + 1; j++) {
         U[i][j] -= m * U[k][j];
+      }
     }
   }
 
   // Back substitution
   for (int k = NSPECS - 1; k >= 0; k--) {
     Real sum = U[k][NSPECS];
-    for (int j = k + 1; j < NSPECS; j++)
+    for (int j = k + 1; j < NSPECS; j++) {
       sum -= U[k][j] * x[j];
+    }
     x[k] = sum / U[k][k];
   }
 }

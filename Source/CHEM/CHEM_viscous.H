@@ -1,9 +1,9 @@
 #ifndef VISCOUS_H
 #define VISCOUS_H
 
-#include <Constants.H>
-#include <IndexDefines.H>
-#include <LiDryer.H>
+#include "Constants.H"
+#include "IndexDefines.H"
+#include "LiDryer.H"
 
 static const Real visccoeff[NSPECS][5] = {{-1.85174759e-04,  3.89197447e-04, -6.98160471e-05,  6.36454790e-06, -2.11216442e-07},
                                             {-5.80149070e-03,  3.39295201e-03, -6.36767978e-04,  5.43779133e-05, -1.73237416e-06},
@@ -85,7 +85,7 @@ Real dot5(const Real (&x)[5], const Real (&y)[5]) noexcept
    conductivity: W/m/K */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void mixtureProperties(Real T, Real* X, Real &mu, Real &lambda) {
+void mixtureProperties(Real T, const Real* X, Real &mu, Real &lambda) {
     Real mui[NSPECS], sqmui[NSPECS], lambdai[NSPECS];
     Real phi[NSPECS][NSPECS] = {{0.0}};
     Real sqT = sqrt(T), logT = log(T);
@@ -134,7 +134,7 @@ void mixtureProperties(Real T, Real* X, Real &mu, Real &lambda) {
    computed according to Eq. 12.178 in "Chemically Reacting Flow"*/
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void getMixDiffCoeffsMass(Real T, Real p, Real* X, Real* d) noexcept
+void getMixDiffCoeffsMass(Real T, Real p, const Real* X, Real* d) noexcept
 {
     Real logT = log(T);
     Real polytempvec[5] = {1.0, logT, logT*logT, logT*logT*logT, logT*logT*logT*logT};

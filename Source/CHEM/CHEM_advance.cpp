@@ -66,7 +66,9 @@ void EBR::chemical_advance(Real dt)
 
             for (int n = 0; n < NSPECS; ++n) {
                 rhoi(i,j,k,n) += drho[n];
-                if (rhoi(i,j,k,n) < 0) rhoi(i,j,k,n) = Real(0.0);
+                if (rhoi(i,j,k,n) < 0) {
+                    rhoi(i,j,k,n) = Real(0.0);
+                }
             }
 
             for (int n=0; n<NSPECS; ++n) {
