@@ -228,6 +228,8 @@ EBR::computeNewDt (int                    finest_level,
                    Real                   stop_time,
                    int                    post_regrid_flag)
 {
+    BL_PROFILE("EBR::computeNewDt()");
+
     //
     // We are at the end of a coarse grid timecycle.
     // Compute the timesteps for the next iteration.
@@ -301,6 +303,8 @@ EBR::post_regrid (int lbase, int new_finest)
 void
 EBR::post_timestep (int iteration)
 {
+    BL_PROFILE("EBR::post_timestep");
+
     if (do_reflux && level < parent->finestLevel()) {
         EBR& fine_level = getLevel(level+1);
         MultiFab& S_crse = get_new_data(State_Type);
@@ -324,6 +328,8 @@ EBR::post_timestep (int iteration)
 void
 EBR::postCoarseTimeStep (Real time)
 {
+    BL_PROFILE("EBR::postCoarseTimeStep()");
+
     // post coarse timestep synctime not needed
     // This only computes sum on level 0
     if (verbose >= 2) {
@@ -394,6 +400,8 @@ EBR::printTotal () const
 void
 EBR::post_init (Real)
 {
+    BL_PROFILE("EBR::post_init()");
+
     if (level > 0) return;
     for (int k = parent->finestLevel()-1; k >= 0; --k) {
         getLevel(k).avgDown();
