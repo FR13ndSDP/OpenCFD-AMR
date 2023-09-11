@@ -89,6 +89,9 @@ public:
                         amrex::Real time, int n_error_buf = 0,
                         int ngrow = 0) override;
 
+  // For load balance
+  int WorkEstType() override { return Cost_Type; }
+
   static int numGrow() { return NUM_GROW; }
 
   // Get volume fraction of cut cell
@@ -191,9 +194,9 @@ protected:
   enum StateVariable { Density = 0, Xmom, Ymom, Zmom, Eden, NUM_STATE };
 
 #ifdef CHEM
-  enum StateType {State_Type = 0, Spec_Type = 1, NUM_STATE_TYPE};
+  enum StateType {State_Type = 0, Spec_Type, Cost_Type, NUM_STATE_TYPE};
 #else
-  enum StateType { State_Type = 0, NUM_STATE_TYPE };
+  enum StateType { State_Type = 0, Cost_Type, NUM_STATE_TYPE };
 #endif
 
   static amrex::BCRec phys_bc;

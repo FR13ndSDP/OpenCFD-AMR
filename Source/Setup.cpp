@@ -210,6 +210,10 @@ EBR::variableSetUp ()
                           bcs,
                           bndryfunc);
 
+    desc_lst.addDescriptor(Cost_Type, IndexType::TheCellType(), StateDescriptor::Point,
+                           0,1, &pc_interp);
+    desc_lst.setComponent(Cost_Type, 0, "Cost", bc, bndryfunc);
+    
     // Velocities
     // get velocity by momentum/density
     derive_lst.add("velocity",IndexType::TheCellType(),AMREX_SPACEDIM,

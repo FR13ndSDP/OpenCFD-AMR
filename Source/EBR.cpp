@@ -80,6 +80,9 @@ EBR::init (AmrLevel& old)
     MultiFab& S_new = get_new_data(State_Type);
     FillPatch(old,S_new,0,cur_time,State_Type,0,NUM_STATE);
 
+    MultiFab& C_new = get_new_data(Cost_Type);
+    FillPatch(old,C_new,0,cur_time,Cost_Type,0,1);
+
 #ifdef CHEM
     MultiFab& Spec_new = get_new_data(Spec_Type);
     FillPatch(old,Spec_new,0,cur_time,Spec_Type,0,NSPECS);
@@ -136,6 +139,9 @@ EBR::initData ()
             ebr_initdata(i, j, k, sfab, geomdata, vf_arr, flag_array, *lparm, *lprobparm);
         });
     }
+
+    MultiFab& C_new = get_new_data(Cost_Type);
+    C_new.setVal(1.0);
 
 #ifdef CHEM
     MultiFab& Spec_new = get_new_data(Spec_Type);

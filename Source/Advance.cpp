@@ -95,6 +95,9 @@ void EBR::flow_advance(Real time, Real dt, int iteration, int ncycle)
     // state with ghost cell
     MultiFab Sborder(grids, dmap, NUM_STATE, NUM_GROW, MFInfo(), Factory());
 
+    MultiFab& C_new = get_new_data(Cost_Type);
+    C_new.setVal(0.0);
+
     EBFluxRegister* fine = nullptr; 
     EBFluxRegister* current = nullptr; 
 
@@ -185,6 +188,8 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
 
     Parm const* lparm = d_parm;
 
+    MultiFab& cost = get_new_data(Cost_Type);
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -195,6 +200,8 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
 
         for (MFIter mfi(S, TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
+            auto wt = amrex::second();
+
             const Box& bx = mfi.tilebox();
 
             const auto& flag = flags[mfi];
@@ -407,6 +414,8 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
 #ifdef AMREX_USE_GPU
             Gpu::streamSynchronize();
 #endif 
+            wt = (amrex::second() - wt) / bx.d_numPts();
+            cost[mfi].plus<RunOn::Device>(wt, bx);
         }
     }
 }
