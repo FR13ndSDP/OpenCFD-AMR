@@ -4,4 +4,5 @@ target_sources(ebamr
      PRIVATE
           AdvanceBox.cpp
           EBkernels.H
+          EBdiffusion.H
 )

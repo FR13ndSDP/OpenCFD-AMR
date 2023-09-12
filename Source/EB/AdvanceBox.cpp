@@ -1,6 +1,7 @@
 #include <IndexDefines.H>
 #include <EBR.H>
 #include <EBkernels.H>
+#include <EBdiffusion.H>
 #include <Kernels.H>
 #include <FluxSplit.H>
 #include <AMReX_EBFArrayBox.H>
@@ -35,6 +36,11 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     const Box& bxg = amrex::grow(bx,NUM_GROW);
 
     const auto dxinv = geom.InvCellSizeArray();
+
+    GpuArray<Real,3> weights;
+    weights[0] = 0.;
+    weights[1] = 1.;
+    weights[2] = 0.5;
 
     // Quantities for redistribution
     FArrayBox divc,redistwgt;
@@ -107,6 +113,14 @@ EBR::eb_compute_dSdt_box (const Box& bx,
         eb_flux(i, j, k, ql, qr, fxfab, cdir, *lparm);
     });
 
+    if (do_visc) {
+        ParallelFor<NTHREADS>(xflxbx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eb_compute_visc_x(i,j,k,q,fxfab,flag,dxinv,weights,*lparm);
+        });
+    }
+
     // y-direction
     cdir = 1;
     const Box& yflxbx = amrex::surroundingNodes(bx,cdir);
@@ -121,6 +135,14 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     {
         eb_flux(i, j, k, ql, qr, fyfab, cdir, *lparm);
     });
+
+    if (do_visc) {
+        ParallelFor<NTHREADS>(yflxbx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eb_compute_visc_y(i,j,k,q,fyfab,flag,dxinv,weights,*lparm);
+        });
+    }
 
     // z-direction
     cdir = 2;
@@ -137,14 +159,22 @@ EBR::eb_compute_dSdt_box (const Box& bx,
         eb_flux(i, j, k, ql, qr, fzfab, cdir, *lparm);
     });
 
-    ParallelFor(bx, NCONS,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+    if (do_visc) {
+        ParallelFor<NTHREADS>(zflxbx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eb_compute_visc_z(i,j,k,q,fzfab,flag,dxinv,weights,*lparm);
+        });
+    }
+
+    ParallelFor(bx,
+    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
-       eb_compute_div(i,j,k,n,q, divc_arr,
+       eb_compute_div(i,j,k,q, divc_arr,
                       fxfab, fyfab, fzfab,
                       flag, vfrac, bcent,
                       apx, apy, apz,
-                      fcx, fcy, fcz, dxinv, *lparm);
+                      fcx, fcy, fcz, dxinv, *lparm, do_visc);
     });
 
     if (do_redistribute) {
