@@ -149,6 +149,9 @@ void EBR::flow_advance_multi(Real time, Real dt, int iteration, int ncycle)
     MultiFab& S_new = get_new_data(State_Type);
     MultiFab& S_old = get_old_data(State_Type);
 
+    MultiFab& C_new = get_new_data(Cost_Type);
+    C_new.setVal(0.0);
+
     // rhs
     MultiFab dSdt(grids, dmap, NUM_STATE, 0, MFInfo(), Factory());
     // state with ghost cell
@@ -237,6 +240,8 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
 
     Parm const* lparm = d_parm;
 
+    MultiFab& cost = get_new_data(Cost_Type);
+
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -247,6 +252,8 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
 
         for (MFIter mfi(S, TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
+            auto wt = amrex::second();
+
             const Box& bx = mfi.tilebox();
 
             for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
@@ -370,10 +377,6 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                     dsdtfab(i,j,k,irhoE) += g * sfab(i,j,k,imz);
                 });
             }
-#ifdef AMREX_USE_GPU
-            // sync here to avoid out of if loop synchronize
-            Gpu::streamSynchronize();
-#endif
             // TODO: reflux for EB is too complicated!
             if (do_reflux)
             {
@@ -392,6 +395,12 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                         fine->CrseAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
                 }
             }
+#ifdef AMREX_USE_GPU
+            // sync here to avoid out of if loop synchronize
+            Gpu::streamSynchronize();
+#endif
+            wt = (amrex::second() - wt) / bx.d_numPts();
+            cost[mfi].plus<RunOn::Device>(wt, bx);
         }
     }
 }
