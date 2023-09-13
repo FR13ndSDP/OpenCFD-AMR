@@ -42,24 +42,24 @@ void EBR::chemical_advance(Real dt)
                 rhoi_0[n] = rhoi(i,j,k,n);
             }
 
-            GET_T_GIVEN_EY(ei, rhoi_0, T);
+            GET_T_GIVEN_EY(ei, rhoi_0, T, *lparm);
 
             for (int n = 0; n < NSPECS; n++) {
-                c[n] = rhoi_0[n] / mw[n] * 1e-6;
+                c[n] = rhoi_0[n] / lparm->mw[n] * 1e-6;
             }
 
             /*call productionRate */
-            vproductionRate(wdot, Arate, c, T);
+            vproductionRate(wdot, Arate, c, T, *lparm);
 
             for (int i = 0; i < NSPECS; ++i) {
             for (int j = 0; j < NSPECS; ++j) {
                 A1[i][j] = (i == j ? 1.0 : 0.0);
-                A1[i][j] -= Arate[i][j] * mw[i] / mw[j] * dt;
+                A1[i][j] -= Arate[i][j] * lparm->mw[i] / lparm->mw[j] * dt;
             }
             }
 
             for (int n = 0; n < NSPECS; ++n) {
-                rhoi_1[n] = wdot[n] * mw[n] * 1e6 * dt;
+                rhoi_1[n] = wdot[n] * lparm->mw[n] * 1e6 * dt;
             }
 
             gauss(drho, A1, rhoi_1);
@@ -72,7 +72,7 @@ void EBR::chemical_advance(Real dt)
             }
 
             for (int n=0; n<NSPECS; ++n) {
-                dei += -HP[n] * Ru / mw[n] * drho[n];
+                dei += -lparm->HP[n] * lparm->Ru / lparm->mw[n] * drho[n];
             }
 
             sfab(i,j,k,UEDEN) += dei;

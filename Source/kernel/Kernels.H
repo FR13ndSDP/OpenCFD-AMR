@@ -68,12 +68,12 @@ c2prim_rgas (int i, int j, int k,
     for (int n=0; n<NSPECS; ++n) {
         rhoi[n] = spec(i,j,k,n);
     }
-    GET_T_GIVEN_EY(ei, rhoi, T);
-    CKPY(rhoi, T, p);
+    GET_T_GIVEN_EY(ei, rhoi, T, parm);
+    CKPY(rhoi, T, p, parm);
     q(i,j,k,QT) = T;
     q(i,j,k,QPRES) = p;
 
-    CKGAMMA(T, rhoi, gama);
+    CKGAMMA(T, rhoi, gama, parm);
     q(i,j,k,QGAMA) = gama;
     q(i,j,k,QC) = std::sqrt(gama*p/rho);
 }

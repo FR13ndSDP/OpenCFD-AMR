@@ -156,7 +156,7 @@ EBR::initData ()
         amrex::ParallelFor(box,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            ebr_initspec(i, j, k, sfab_state, sfab, geomdata);
+            ebr_initspec(i, j, k, sfab_state, sfab, geomdata, *lparm);
         });
     }
 #endif
@@ -487,7 +487,12 @@ EBR::read_params ()
     pp.query("T_s"      , h_parm->T_s);
 
     h_parm->Initialize();
-    amrex::Gpu::copy(amrex::Gpu::hostToDevice, h_parm, h_parm+1, d_parm);
+#ifdef AMREX_USE_GPU
+        // Cannot use Gpu::copy because ProbParm is not trivailly copyable.
+        Gpu::htod_memcpy_async(EBR::d_parm, EBR::h_parm, sizeof(Parm));
+#else
+        std::memcpy(EBR::d_parm, EBR::h_parm, sizeof(Parm));
+#endif
 
     pp.query("do_redistribute", do_redistribute);
 

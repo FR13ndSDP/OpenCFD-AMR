@@ -117,6 +117,8 @@ void ebr_dertemp (const Box& bx, FArrayBox& tfab, int dcomp, int ncomp,
     amrex::ignore_unused(ncomp);
     auto const dat = datfab.array();
     auto       t    = tfab.array();
+    Parm const* lparm = EBR::d_parm;
+
     amrex::ParallelFor(bx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
@@ -128,7 +130,7 @@ void ebr_dertemp (const Box& bx, FArrayBox& tfab, int dcomp, int ncomp,
                                 (dat(i,j,k,UMX)*dat(i,j,k,UMX) + \
                                  dat(i,j,k,UMY)*dat(i,j,k,UMY) + \
                                  dat(i,j,k,UMZ)*dat(i,j,k,UMZ));
-        GET_T_GIVEN_EY(e, rhoi, t(i,j,k,dcomp));
+        GET_T_GIVEN_EY(e, rhoi, t(i,j,k,dcomp), *lparm);
     });
 }
 
@@ -139,6 +141,8 @@ void ebr_derpres (const Box& bx, FArrayBox& pfab, int dcomp, int ncomp,
     amrex::ignore_unused(ncomp);
     auto const dat = datfab.array();
     auto       p    = pfab.array();
+    Parm const* lparm = EBR::d_parm;
+
     amrex::ParallelFor(bx,
     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
     {
@@ -151,8 +155,8 @@ void ebr_derpres (const Box& bx, FArrayBox& pfab, int dcomp, int ncomp,
                                 (dat(i,j,k,UMX)*dat(i,j,k,UMX) + \
                                  dat(i,j,k,UMY)*dat(i,j,k,UMY) + \
                                  dat(i,j,k,UMZ)*dat(i,j,k,UMZ));
-        GET_T_GIVEN_EY(e, rhoi, T);
-        CKPY(rhoi, T, p(i,j,k,dcomp));
+        GET_T_GIVEN_EY(e, rhoi, T, *lparm);
+        CKPY(rhoi, T, p(i,j,k,dcomp), *lparm);
     });
 }
 #endif

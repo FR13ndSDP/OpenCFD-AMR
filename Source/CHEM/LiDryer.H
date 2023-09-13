@@ -1,149 +1,76 @@
 #ifndef LIDRYER_H
 #define LIDRYER_H
 
-#include <algorithm>
 #include <cmath>
 #include "IndexDefines.H"
 #include "Constants.H"
 
 using amrex::Real;
 
-static const Real Patm = 101325.0, Ru = 8.31446261815324;
-
-// kg/mol
-static const Real mw[NSPECS] = {2.016 * 1e-3,   /*H2 */
-                                  31.998 * 1e-3,   /*O2 */
-                                  18.015 * 1e-3,   /*H2O */
-                                  1.008 * 1e-3,   /*H */
-                                  15.999 * 1e-3,   /*O */
-                                  17.007 * 1e-3,   /*OH */
-                                  33.006 * 1e-3,   /*HO2 */
-                                  34.014 * 1e-3,   /*H2O2 */
-                                  28.014 * 1e-3}; /*N2 */
-
-static const Real H2_lo[7] = {3.29812,      8.24944e-4,    -81.43015e-8,
-                                -9.47543e-11, 413.48718e-15, -0.01013e+5,
-                                -3.29409};
-static const Real H2_hi[7] = {2.99142,      7.00064e-4,  -5.63383e-8,
-                                -0.92316e-11, 1.58275e-15, -0.00835e+5,
-                                -1.35511};
-static const Real O2_lo[7] = {3.21294,       11.27486e-4,   -57.56150e-8,
-                                131.38770e-11, -876.8554e-15, -0.01005e+5,
-                                6.03474};
-static const Real O2_hi[7] = {3.69758,     6.13520e-4,   -12.58842e-8,
-                                1.77528e-11, -1.13644e-15, -0.01234e+5,
-                                3.18917};
-static const Real H2O_lo[7] = {3.38684,      34.74982e-4,   -635.4696e-8,
-                                 696.8581e-11, -2506.588e-15, -0.30208e+5,
-                                 2.59023};
-static const Real H2O_hi[7] = {2.67215,      30.56293e-4,  -87.30260e-8,
-                                 12.00996e-11, -6.39162e-15, -0.29899e+5,
-                                 6.86282};
-static const Real H_lo[7] = {2.5, 0.0, 0.0, 0.0, 0.0, 0.25472e+5, -0.46012};
-static const Real H_hi[7] = {2.5, 0.0, 0.0, 0.0, 0.0, 0.25472e+5, -0.46012};
-static const Real O_lo[7] = {2.94643,      -16.3817e-4,   242.10320e-8,
-                               -160.284e-11, 389.06961e-15, 0.29148e+5,
-                               2.96399};
-static const Real O_hi[7] = {2.54206,     -0.27551e-4,  -0.31028e-8,
-                               0.45511e-11, -0.43681e-15, 0.29231e+5,
-                               4.92031};
-static const Real OH_lo[7] = {3.63727,       1.85091e-4,    -167.6165e-8,
-                                238.72031e-11, -843.1442e-15, 0.03607e+5,
-                                1.35886};
-static const Real OH_hi[7] = {2.88273,     10.13974e-4,  -22.76877e-8,
-                                2.17468e-11, -0.51263e-15, 0.03887e+5,
-                                5.59571};
-static const Real HO2_lo[7] = {2.97996,       49.96697e-4,   -379.0997e-8,
-                                 235.41919e-11, -808.9024e-15, 0.00176e+5,
-                                 9.22272};
-static const Real HO2_hi[7] = {4.07219,     21.31296e-4,  -53.08145e-8,
-                                 6.11227e-11, -2.84116e-15, -0.00158e+5,
-                                 3.47603};
-static const Real H2O2_lo[7] = {3.38875,        65.69226e-4,  -14.85013e-8,
-                                  -462.58060e-11, 2471.515e-15, -0.17663e+5,
-                                  6.78536};
-static const Real H2O2_hi[7] = {4.57317,      43.36136e-4,   -147.4689e-8,
-                                  23.48904e-11, -14.31654e-15, -0.18007e+5,
-                                  0.50114};
-static const Real N2_lo[7] = {3.29868,       14.08240e-4,   -396.3222e-8,
-                                564.15149e-11, -2444.855e-15, -0.01021e+5,
-                                3.95037};
-static const Real N2_hi[7] = {2.92664,      14.87977e-4,  -56.84761e-8,
-                                10.09704e-11, -6.75335e-15, -0.00923e+5,
-                                5.98053};
-
-// enthalpy of production at lo
-// K
-static const double HP[NSPECS] = {H2_lo[5], O2_lo[5], H2O_lo[5], H_lo[5], O_lo[5], OH_lo[5], HO2_lo[5], H2O2_lo[5], N2_lo[5]};
-
-// used to get initial T
-static const double A0[NSPECS] = {H2_lo[0]-1.0, O2_lo[0]-1.0, H2O_lo[0]-1.0, H_lo[0]-1.0, O_lo[0]-1.0, OH_lo[0]-1.0, HO2_lo[0]-1.0, H2O2_lo[0]-1.0, N2_lo[0]-1.0};
-
-
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKPY(const Real *rhoi, Real T, Real &P) noexcept {
+void CKPY(const Real *rhoi, Real T, Real &P, Parm const& parm) noexcept {
   Real YOW = 0; /* for computing mean MW */
   for (int i = 0; i < NSPECS; ++i) {
-    YOW += rhoi[i] / mw[i];
+    YOW += rhoi[i] / parm.mw[i];
   }
-  P = Ru * T * YOW; /*P = rho*R*T/W */
+  P = parm.Ru * T * YOW; /*P = rho*R*T/W */
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKRHOY(Real P, Real T, const Real *y, Real &rho) noexcept {
+void CKRHOY(Real P, Real T, const Real *y, Real &rho, Parm const& parm) noexcept {
   Real YOW = 0;
   amrex::GpuArray<amrex::Real, NSPECS> tmp;
 
-  for (int i = 0; i < NSPECS; i++) {
-    tmp[i] = y[i] / mw[i];
+  for (int i = 0; i < NSPECS; ++i) {
+    tmp[i] = y[i] / parm.mw[i];
   }
-  for (Real i : tmp) {
-    YOW += i;
+  for (Real i = 0; i<NSPECS; ++i) {
+    YOW += tmp[i];
   }
 
-  rho = P / (Ru * T * YOW); /*rho = P*W/(R*T) */
+  rho = P / (parm.Ru * T * YOW); /*rho = P*W/(R*T) */
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKYTX(const Real *y, Real *x) noexcept {
+void CKYTX(const Real *y, Real *x, Parm const& parm) noexcept {
   Real YOW = 0;
   amrex::GpuArray<amrex::Real, NSPECS> tmp;
 
   for (int i = 0; i < NSPECS; i++) {
-    tmp[i] = y[i] / mw[i];
+    tmp[i] = y[i] / parm.mw[i];
   }
-  for (Real i : tmp) {
-    YOW += i;
+  for (Real i = 0; i<NSPECS; ++i) {
+    YOW += tmp[i];
   }
 
   Real YOWINV = 1.0 / YOW;
 
   for (int i = 0; i < NSPECS; i++) {
-    x[i] = y[i] / mw[i] * YOWINV;
+    x[i] = y[i] / parm.mw[i] * YOWINV;
   }
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKXTY(const Real *x, Real *y) noexcept {
+void CKXTY(const Real *x, Real *y, Parm const& parm) noexcept {
   Real XW = 0.0; /*See Eq 4, 9 in CK Manual */
   /*Compute mean molecular wt first */
   for (int i = 0; i < NSPECS; ++i) {
-    XW += x[i] * mw[i];
+    XW += x[i] * parm.mw[i];
   }
   /*Now compute conversion */
   for (int i = 0; i < NSPECS; ++i) {
-    y[i] = x[i] * mw[i] / XW;
+    y[i] = x[i] * parm.mw[i] / XW;
   }
 }
 
 // gi/T, gi = g/Ri
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void gibbs(Real *species, const Real *tc) noexcept {
+void gibbs(Real *species, const Real *tc, Parm const& parm) noexcept {
   /*temperature */
   Real T = tc[1];
   Real invT = 1 / T;
@@ -151,85 +78,85 @@ void gibbs(Real *species, const Real *tc) noexcept {
   /*species with midpoint at T=1000 kelvin */
   if (T < 1000) {
     /*species 0: H2 */
-    species[0] = H2_lo[0] * (1.0 - tc[0]) - H2_lo[1] / 2.0 * tc[1] -
-                 H2_lo[2] / 6.0 * tc[2] - H2_lo[3] / 12.0 * tc[3] -
-                 H2_lo[4] / 20.0 * tc[4] + H2_lo[5] * invT - H2_lo[6];
+    species[0] = parm.H2_lo[0] * (1.0 - tc[0]) - parm.H2_lo[1] / 2.0 * tc[1] -
+                 parm.H2_lo[2] / 6.0 * tc[2] - parm.H2_lo[3] / 12.0 * tc[3] -
+                 parm.H2_lo[4] / 20.0 * tc[4] + parm.H2_lo[5] * invT - parm.H2_lo[6];
     /*species 1: O2 */
-    species[1] = O2_lo[0] * (1.0 - tc[0]) - O2_lo[1] / 2.0 * tc[1] -
-                 O2_lo[2] / 6.0 * tc[2] - O2_lo[3] / 12.0 * tc[3] -
-                 O2_lo[4] / 20.0 * tc[4] + O2_lo[5] * invT - O2_lo[6];
+    species[1] = parm.O2_lo[0] * (1.0 - tc[0]) - parm.O2_lo[1] / 2.0 * tc[1] -
+                 parm.O2_lo[2] / 6.0 * tc[2] -   parm.O2_lo[3] / 12.0 * tc[3] -
+                 parm.O2_lo[4] / 20.0 * tc[4] +  parm.O2_lo[5] * invT - parm.O2_lo[6];
     /*species 2: H2O */
-    species[2] = H2O_lo[0] * (1.0 - tc[0]) - H2O_lo[1] / 2.0 * tc[1] -
-                 H2O_lo[2] / 6.0 * tc[2] - H2O_lo[3] / 12.0 * tc[3] -
-                 H2O_lo[4] / 20.0 * tc[4] + H2O_lo[5] * invT - H2O_lo[6];
+    species[2] = parm.H2O_lo[0] * (1.0 - tc[0]) - parm.H2O_lo[1] / 2.0 * tc[1] -
+                 parm.H2O_lo[2] / 6.0 * tc[2] -   parm.H2O_lo[3] / 12.0 * tc[3] -
+                 parm.H2O_lo[4] / 20.0 * tc[4] +  parm.H2O_lo[5] * invT - parm.H2O_lo[6];
     /*species 3: H */
-    species[3] = H_lo[0] * (1.0 - tc[0]) - H_lo[1] / 2.0 * tc[1] -
-                 H_lo[2] / 6.0 * tc[2] - H_lo[3] / 12.0 * tc[3] -
-                 H_lo[4] / 20.0 * tc[4] + H_lo[5] * invT - H_lo[6];
+    species[3] = parm.H_lo[0] * (1.0 - tc[0]) - parm.H_lo[1] / 2.0 * tc[1] -
+                 parm.H_lo[2] / 6.0 * tc[2] -   parm.H_lo[3] / 12.0 * tc[3] -
+                 parm.H_lo[4] / 20.0 * tc[4] +  parm.H_lo[5] * invT - parm.H_lo[6];
     /*species 4: O */
-    species[4] = O_lo[0] * (1.0 - tc[0]) - O_lo[1] / 2.0 * tc[1] -
-                 O_lo[2] / 6.0 * tc[2] - O_lo[3] / 12.0 * tc[3] -
-                 O_lo[4] / 20.0 * tc[4] + O_lo[5] * invT - O_lo[6];
+    species[4] = parm.O_lo[0] * (1.0 - tc[0]) - parm.O_lo[1] / 2.0 * tc[1] -
+                 parm.O_lo[2] / 6.0 * tc[2] -   parm.O_lo[3] / 12.0 * tc[3] -
+                 parm.O_lo[4] / 20.0 * tc[4] +  parm.O_lo[5] * invT - parm.O_lo[6];
     /*species 5: OH */
-    species[5] = OH_lo[0] * (1.0 - tc[0]) - OH_lo[1] / 2.0 * tc[1] -
-                 OH_lo[2] / 6.0 * tc[2] - OH_lo[3] / 12.0 * tc[3] -
-                 OH_lo[4] / 20.0 * tc[4] + OH_lo[5] * invT - OH_lo[6];
+    species[5] = parm.OH_lo[0] * (1.0 - tc[0]) - parm.OH_lo[1] / 2.0 * tc[1] -
+                 parm.OH_lo[2] / 6.0 * tc[2] -   parm.OH_lo[3] / 12.0 * tc[3] -
+                 parm.OH_lo[4] / 20.0 * tc[4] +  parm.OH_lo[5] * invT - parm.OH_lo[6];
     /*species 6: HO2 */
-    species[6] = HO2_lo[0] * (1.0 - tc[0]) - HO2_lo[1] / 2.0 * tc[1] -
-                 HO2_lo[2] / 6.0 * tc[2] - HO2_lo[3] / 12.0 * tc[3] -
-                 HO2_lo[4] / 20.0 * tc[4] + HO2_lo[5] * invT - HO2_lo[6];
+    species[6] = parm.HO2_lo[0] * (1.0 - tc[0]) - parm.HO2_lo[1] / 2.0 * tc[1] -
+                 parm.HO2_lo[2] / 6.0 * tc[2] -   parm.HO2_lo[3] / 12.0 * tc[3] -
+                 parm.HO2_lo[4] / 20.0 * tc[4] +  parm.HO2_lo[5] * invT - parm.HO2_lo[6];
     /*species 7: H2O2 */
-    species[7] = H2O2_lo[0] * (1.0 - tc[0]) - H2O2_lo[1] / 2.0 * tc[1] -
-                 H2O2_lo[2] / 6.0 * tc[2] - H2O2_lo[3] / 12.0 * tc[3] -
-                 H2O2_lo[4] / 20.0 * tc[4] + H2O2_lo[5] * invT - H2O2_lo[6];
+    species[7] = parm.H2O2_lo[0] * (1.0 - tc[0]) - parm.H2O2_lo[1] / 2.0 * tc[1] -
+                 parm.H2O2_lo[2] / 6.0 * tc[2] -   parm.H2O2_lo[3] / 12.0 * tc[3] -
+                 parm.H2O2_lo[4] / 20.0 * tc[4] +  parm.H2O2_lo[5] * invT - parm.H2O2_lo[6];
     /*species 8: N2 */
-    species[8] = N2_lo[0] * (1.0 - tc[0]) - N2_lo[1] / 2.0 * tc[1] -
-                 N2_lo[2] / 6.0 * tc[2] - N2_lo[3] / 12.0 * tc[3] -
-                 N2_lo[4] / 20.0 * tc[4] + N2_lo[5] * invT - N2_lo[6];
+    species[8] = parm.N2_lo[0] * (1.0 - tc[0]) - parm.N2_lo[1] / 2.0 * tc[1] -
+                 parm.N2_lo[2] / 6.0 * tc[2] -   parm.N2_lo[3] / 12.0 * tc[3] -
+                 parm.N2_lo[4] / 20.0 * tc[4] +  parm.N2_lo[5] * invT - parm.N2_lo[6];
   } else {
     /*species 0: H2 */
-    species[0] = H2_hi[0] * (1.0 - tc[0]) - H2_hi[1] / 2.0 * tc[1] -
-                 H2_hi[2] / 6.0 * tc[2] - H2_hi[3] / 12.0 * tc[3] -
-                 H2_hi[4] / 20.0 * tc[4] + H2_hi[5] * invT - H2_hi[6];
+    species[0] = parm.H2_hi[0] * (1.0 - tc[0]) - parm.H2_hi[1] / 2.0 * tc[1] -
+                 parm.H2_hi[2] / 6.0 * tc[2] - parm.H2_hi[3] / 12.0 * tc[3] -
+                 parm.H2_hi[4] / 20.0 * tc[4] + parm.H2_hi[5] * invT - parm.H2_hi[6];
     /*species 1: O2 */
-    species[1] = O2_hi[0] * (1.0 - tc[0]) - O2_hi[1] / 2.0 * tc[1] -
-                 O2_hi[2] / 6.0 * tc[2] - O2_hi[3] / 12.0 * tc[3] -
-                 O2_hi[4] / 20.0 * tc[4] + O2_hi[5] * invT - O2_hi[6];
+    species[1] = parm.O2_hi[0] * (1.0 - tc[0]) - parm.O2_hi[1] / 2.0 * tc[1] -
+                 parm.O2_hi[2] / 6.0 * tc[2] -   parm.O2_hi[3] / 12.0 * tc[3] -
+                 parm.O2_hi[4] / 20.0 * tc[4] +  parm.O2_hi[5] * invT - parm.O2_hi[6];
     /*species 2: H2O */
-    species[2] = H2O_hi[0] * (1.0 - tc[0]) - H2O_hi[1] / 2.0 * tc[1] -
-                 H2O_hi[2] / 6.0 * tc[2] - H2O_hi[3] / 12.0 * tc[3] -
-                 H2O_hi[4] / 20.0 * tc[4] + H2O_hi[5] * invT - H2O_hi[6];
+    species[2] = parm.H2O_hi[0] * (1.0 - tc[0]) - parm.H2O_hi[1] / 2.0 * tc[1] -
+                 parm.H2O_hi[2] / 6.0 * tc[2] -   parm.H2O_hi[3] / 12.0 * tc[3] -
+                 parm.H2O_hi[4] / 20.0 * tc[4] +  parm.H2O_hi[5] * invT - parm.H2O_hi[6];
     /*species 3: H */
-    species[3] = H_hi[0] * (1.0 - tc[0]) - H_hi[1] / 2.0 * tc[1] -
-                 H_hi[2] / 6.0 * tc[2] - H_hi[3] / 12.0 * tc[3] -
-                 H_hi[4] / 20.0 * tc[4] + H_hi[5] * invT - H_hi[6];
+    species[3] = parm.H_hi[0] * (1.0 - tc[0]) - parm.H_hi[1] / 2.0 * tc[1] -
+                 parm.H_hi[2] / 6.0 * tc[2] -   parm.H_hi[3] / 12.0 * tc[3] -
+                 parm.H_hi[4] / 20.0 * tc[4] +  parm.H_hi[5] * invT - parm.H_hi[6];
     /*species 4: O */
-    species[4] = O_hi[0] * (1.0 - tc[0]) - O_hi[1] / 2.0 * tc[1] -
-                 O_hi[2] / 6.0 * tc[2] - O_hi[3] / 12.0 * tc[3] -
-                 O_hi[4] / 20.0 * tc[4] + O_hi[5] * invT - O_hi[6];
+    species[4] = parm.O_hi[0] * (1.0 - tc[0]) - parm.O_hi[1] / 2.0 * tc[1] -
+                 parm.O_hi[2] / 6.0 * tc[2] -   parm.O_hi[3] / 12.0 * tc[3] -
+                 parm.O_hi[4] / 20.0 * tc[4] +  parm.O_hi[5] * invT - parm.O_hi[6];
     /*species 5: OH */
-    species[5] = OH_hi[0] * (1.0 - tc[0]) - OH_hi[1] / 2.0 * tc[1] -
-                 OH_hi[2] / 6.0 * tc[2] - OH_hi[3] / 12.0 * tc[3] -
-                 OH_hi[4] / 20.0 * tc[4] + OH_hi[5] * invT - OH_hi[6];
+    species[5] = parm.OH_hi[0] * (1.0 - tc[0]) - parm.OH_hi[1] / 2.0 * tc[1] -
+                 parm.OH_hi[2] / 6.0 * tc[2] -   parm.OH_hi[3] / 12.0 * tc[3] -
+                 parm.OH_hi[4] / 20.0 * tc[4] +  parm.OH_hi[5] * invT - parm.OH_hi[6];
     /*species 6: HO2 */
-    species[6] = HO2_hi[0] * (1.0 - tc[0]) - HO2_hi[1] / 2.0 * tc[1] -
-                 HO2_hi[2] / 6.0 * tc[2] - HO2_hi[3] / 12.0 * tc[3] -
-                 HO2_hi[4] / 20.0 * tc[4] + HO2_hi[5] * invT - HO2_hi[6];
+    species[6] = parm.HO2_hi[0] * (1.0 - tc[0]) - parm.HO2_hi[1] / 2.0 * tc[1] -
+                 parm.HO2_hi[2] / 6.0 * tc[2] -   parm.HO2_hi[3] / 12.0 * tc[3] -
+                 parm.HO2_hi[4] / 20.0 * tc[4] +  parm.HO2_hi[5] * invT - parm.HO2_hi[6];
     /*species 7: H2O2 */
-    species[7] = H2O2_hi[0] * (1.0 - tc[0]) - H2O2_hi[1] / 2.0 * tc[1] -
-                 H2O2_hi[2] / 6.0 * tc[2] - H2O2_hi[3] / 12.0 * tc[3] -
-                 H2O2_hi[4] / 20.0 * tc[4] + H2O2_hi[5] * invT - H2O2_hi[6];
+    species[7] = parm.H2O2_hi[0] * (1.0 - tc[0]) - parm.H2O2_hi[1] / 2.0 * tc[1] -
+                 parm.H2O2_hi[2] / 6.0 * tc[2] -   parm.H2O2_hi[3] / 12.0 * tc[3] -
+                 parm.H2O2_hi[4] / 20.0 * tc[4] +  parm.H2O2_hi[5] * invT - parm.H2O2_hi[6];
     /*species 8: N2 */
-    species[8] = N2_hi[0] * (1.0 - tc[0]) - N2_hi[1] / 2.0 * tc[1] -
-                 N2_hi[2] / 6.0 * tc[2] - N2_hi[3] / 12.0 * tc[3] -
-                 N2_hi[4] / 20.0 * tc[4] + N2_hi[5] * invT - N2_hi[6];
+    species[8] = parm.N2_hi[0] * (1.0 - tc[0]) - parm.N2_hi[1] / 2.0 * tc[1] -
+                 parm.N2_hi[2] / 6.0 * tc[2] -   parm.N2_hi[3] / 12.0 * tc[3] -
+                 parm.N2_hi[4] / 20.0 * tc[4] +  parm.N2_hi[5] * invT - parm.N2_hi[6];
   }
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void vproductionRate(Real *wdot, Real (&Arate)[NSPECS][NSPECS], const Real *sc,
-                     Real T) noexcept {
+                     Real T, Parm const& parm) noexcept {
   Real k_f_s[21], Kc_s[21], mixture, gi_T[NSPECS];
   Real tc[5], invT;
   const Real eps = 1e-20;
@@ -265,9 +192,9 @@ void vproductionRate(Real *wdot, Real (&Arate)[NSPECS][NSPECS], const Real *sc,
 
   /*compute the Gibbs free energy */
 
-  gibbs(gi_T, tc);
+  gibbs(gi_T, tc, parm);
 
-  Real RsT = Ru / Patm * 1e6 * T;
+  Real RsT = parm.Ru / parm.Patm * 1e6 * T;
 
   Kc_s[0] = exp((gi_T[3] + gi_T[1]) - (gi_T[4] + gi_T[5]));
   Kc_s[1] = exp((gi_T[4] + gi_T[0]) - (gi_T[3] + gi_T[5]));
@@ -605,7 +532,7 @@ void vproductionRate(Real *wdot, Real (&Arate)[NSPECS][NSPECS], const Real *sc,
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void speciesInternalEnergy(Real *species, const Real *tc) noexcept {
+void speciesInternalEnergy(Real *species, const Real *tc, Parm const& parm) noexcept {
 
   /*temperature */
   Real T = tc[1];
@@ -614,156 +541,156 @@ void speciesInternalEnergy(Real *species, const Real *tc) noexcept {
   /*species with midpoint at T=1000 kelvin */
   if (T < 1000) {
     /*species 0: H2 */
-    species[0] = H2_lo[0] - 1.0 + H2_lo[1] / 2.0 * tc[1] +
-                 H2_lo[2] / 3.0 * tc[2] + H2_lo[3] / 4.0 * tc[3] +
-                 H2_lo[4] / 5.0 * tc[4];
+    species[0] = parm.H2_lo[0] - 1.0 + parm.H2_lo[1] / 2.0 * tc[1] +
+                 parm.H2_lo[2] / 3.0 * tc[2] + parm.H2_lo[3] / 4.0 * tc[3] +
+                 parm.H2_lo[4] / 5.0 * tc[4];
     /*species 1: O2 */
-    species[1] = O2_lo[0] - 1.0 + O2_lo[1] / 2.0 * tc[1] +
-                 O2_lo[2] / 3.0 * tc[2] + O2_lo[3] / 4.0 * tc[3] +
-                 O2_lo[4] / 5.0 * tc[4];
+    species[1] = parm.O2_lo[0] - 1.0 + parm.O2_lo[1] / 2.0 * tc[1] +
+                 parm.O2_lo[2] / 3.0 * tc[2] + parm.O2_lo[3] / 4.0 * tc[3] +
+                 parm.O2_lo[4] / 5.0 * tc[4];
     /*species 2: H2O */
-    species[2] = H2O_lo[0] - 1.0 + H2O_lo[1] / 2.0 * tc[1] +
-                 H2O_lo[2] / 3.0 * tc[2] + H2O_lo[3] / 4.0 * tc[3] +
-                 H2O_lo[4] / 5.0 * tc[4];
+    species[2] = parm.H2O_lo[0] - 1.0 + parm.H2O_lo[1] / 2.0 * tc[1] +
+                 parm.H2O_lo[2] / 3.0 * tc[2] + parm.H2O_lo[3] / 4.0 * tc[3] +
+                 parm.H2O_lo[4] / 5.0 * tc[4];
     /*species 3: H */
-    species[3] = H_lo[0] - 1.0 + H_lo[1] / 2.0 * tc[1] + H_lo[2] / 3.0 * tc[2] +
-                 H_lo[3] / 4.0 * tc[3] + H_lo[4] / 5.0 * tc[4];
+    species[3] = parm.H_lo[0] - 1.0 + parm.H_lo[1] / 2.0 * tc[1] + parm.H_lo[2] / 3.0 * tc[2] +
+                 parm.H_lo[3] / 4.0 * tc[3] + parm.H_lo[4] / 5.0 * tc[4];
     /*species 4: O */
-    species[4] = O_lo[0] - 1.0 + O_lo[1] / 2.0 * tc[1] + O_lo[2] / 3.0 * tc[2] +
-                 O_lo[3] / 4.0 * tc[3] + O_lo[4] / 5.0 * tc[4];
+    species[4] = parm.O_lo[0] - 1.0 + parm.O_lo[1] / 2.0 * tc[1] + parm.O_lo[2] / 3.0 * tc[2] +
+                 parm.O_lo[3] / 4.0 * tc[3] + parm.O_lo[4] / 5.0 * tc[4];
     /*species 5: OH */
-    species[5] = OH_lo[0] - 1.0 + OH_lo[1] / 2.0 * tc[1] +
-                 OH_lo[2] / 3.0 * tc[2] + OH_lo[3] / 4.0 * tc[3] +
-                 OH_lo[4] / 5.0 * tc[4];
+    species[5] = parm.OH_lo[0] - 1.0 + parm.OH_lo[1] / 2.0 * tc[1] +
+                 parm.OH_lo[2] / 3.0 * tc[2] + parm.OH_lo[3] / 4.0 * tc[3] +
+                 parm.OH_lo[4] / 5.0 * tc[4];
     /*species 6: HO2 */
-    species[6] = HO2_lo[0] - 1.0 + HO2_lo[1] / 2.0 * tc[1] +
-                 HO2_lo[2] / 3.0 * tc[2] + HO2_lo[3] / 4.0 * tc[3] +
-                 HO2_lo[4] / 5.0 * tc[4];
+    species[6] = parm.HO2_lo[0] - 1.0 + parm.HO2_lo[1] / 2.0 * tc[1] +
+                 parm.HO2_lo[2] / 3.0 * tc[2] + parm.HO2_lo[3] / 4.0 * tc[3] +
+                 parm.HO2_lo[4] / 5.0 * tc[4];
     /*species 7: H2O2 */
-    species[7] = H2O2_lo[0] - 1.0 + H2O2_lo[1] / 2.0 * tc[1] +
-                 H2O2_lo[2] / 3.0 * tc[2] + H2O2_lo[3] / 4.0 * tc[3] +
-                 H2O2_lo[4] / 5.0 * tc[4];
+    species[7] = parm.H2O2_lo[0] - 1.0 + parm.H2O2_lo[1] / 2.0 * tc[1] +
+                 parm.H2O2_lo[2] / 3.0 * tc[2] + parm.H2O2_lo[3] / 4.0 * tc[3] +
+                 parm.H2O2_lo[4] / 5.0 * tc[4];
     /*species 8: N2 */
-    species[8] = N2_lo[0] - 1.0 + N2_lo[1] / 2.0 * tc[1] +
-                 N2_lo[2] / 3.0 * tc[2] + N2_lo[3] / 4.0 * tc[3] +
-                 N2_lo[4] / 5.0 * tc[4];
+    species[8] = parm.N2_lo[0] - 1.0 + parm.N2_lo[1] / 2.0 * tc[1] +
+                 parm.N2_lo[2] / 3.0 * tc[2] + parm.N2_lo[3] / 4.0 * tc[3] +
+                 parm.N2_lo[4] / 5.0 * tc[4];
   } else {
-    species[0] = H2_hi[0] - 1.0 + H2_hi[1] / 2.0 * tc[1] +
-                 H2_hi[2] / 3.0 * tc[2] + H2_hi[3] / 4.0 * tc[3] +
-                 H2_hi[4] / 5.0 * tc[4] + (H2_hi[5] - H2_lo[5]) * invT;
+    species[0] = parm.H2_hi[0] - 1.0 + parm.H2_hi[1] / 2.0 * tc[1] +
+                 parm.H2_hi[2] / 3.0 * tc[2] + parm.H2_hi[3] / 4.0 * tc[3] +
+                 parm.H2_hi[4] / 5.0 * tc[4] + (parm.H2_hi[5] - parm.H2_lo[5]) * invT;
     /*species 1: O2 */
-    species[1] = O2_hi[0] - 1.0 + O2_hi[1] / 2.0 * tc[1] +
-                 O2_hi[2] / 3.0 * tc[2] + O2_hi[3] / 4.0 * tc[3] +
-                 O2_hi[4] / 5.0 * tc[4] + (O2_hi[5] - O2_lo[5]) * invT;
+    species[1] = parm.O2_hi[0] - 1.0 + parm.O2_hi[1] / 2.0 * tc[1] +
+                 parm.O2_hi[2] / 3.0 * tc[2] + parm.O2_hi[3] / 4.0 * tc[3] +
+                 parm.O2_hi[4] / 5.0 * tc[4] + (parm.O2_hi[5] - parm.O2_lo[5]) * invT;
     /*species 2: H2O */
-    species[2] = H2O_hi[0] - 1.0 + H2O_hi[1] / 2.0 * tc[1] +
-                 H2O_hi[2] / 3.0 * tc[2] + H2O_hi[3] / 4.0 * tc[3] +
-                 H2O_hi[4] / 5.0 * tc[4] + (H2O_hi[5] - H2O_lo[5])* invT;
+    species[2] = parm.H2O_hi[0] - 1.0 + parm.H2O_hi[1] / 2.0 * tc[1] +
+                 parm.H2O_hi[2] / 3.0 * tc[2] + parm.H2O_hi[3] / 4.0 * tc[3] +
+                 parm.H2O_hi[4] / 5.0 * tc[4] + (parm.H2O_hi[5] - parm.H2O_lo[5])* invT;
     /*species 3: H */
-    species[3] = H_hi[0] - 1.0 + H_hi[1] / 2.0 * tc[1] + H_hi[2] / 3.0 * tc[2] +
-                 H_hi[3] / 4.0 * tc[3] + H_hi[4] / 5.0 * tc[4] +
-                 (H_hi[5] - H_lo[5])* invT;
+    species[3] = parm.H_hi[0] - 1.0 + parm.H_hi[1] / 2.0 * tc[1] + parm.H_hi[2] / 3.0 * tc[2] +
+                 parm.H_hi[3] / 4.0 * tc[3] + parm.H_hi[4] / 5.0 * tc[4] +
+                 (parm.H_hi[5] - parm.H_lo[5])* invT;
     /*species 4: O */
-    species[4] = O_hi[0] - 1.0 + O_hi[1] / 2.0 * tc[1] + O_hi[2] / 3.0 * tc[2] +
-                 O_hi[3] / 4.0 * tc[3] + O_hi[4] / 5.0 * tc[4] +
-                 (O_hi[5] - O_lo[5])* invT;
+    species[4] = parm.O_hi[0] - 1.0 + parm.O_hi[1] / 2.0 * tc[1] + parm.O_hi[2] / 3.0 * tc[2] +
+                 parm.O_hi[3] / 4.0 * tc[3] + parm.O_hi[4] / 5.0 * tc[4] +
+                 (parm.O_hi[5] - parm.O_lo[5])* invT;
     /*species 5: OH */
-    species[5] = OH_hi[0] - 1.0 + OH_hi[1] / 2.0 * tc[1] +
-                 OH_hi[2] / 3.0 * tc[2] + OH_hi[3] / 4.0 * tc[3] +
-                 OH_hi[4] / 5.0 * tc[4] + (OH_hi[5] - OH_lo[5])* invT;
+    species[5] = parm.OH_hi[0] - 1.0 + parm.OH_hi[1] / 2.0 * tc[1] +
+                 parm.OH_hi[2] / 3.0 * tc[2] + parm.OH_hi[3] / 4.0 * tc[3] +
+                 parm.OH_hi[4] / 5.0 * tc[4] + (parm.OH_hi[5] - parm.OH_lo[5])* invT;
     /*species 6: HO2 */
-    species[6] = HO2_hi[0] - 1.0 + HO2_hi[1] / 2.0 * tc[1] +
-                 HO2_hi[2] / 3.0 * tc[2] + HO2_hi[3] / 4.0 * tc[3] +
-                 HO2_hi[4] / 5.0 * tc[4] + (HO2_hi[5] - HO2_lo[5])* invT;
+    species[6] = parm.HO2_hi[0] - 1.0 + parm.HO2_hi[1] / 2.0 * tc[1] +
+                 parm.HO2_hi[2] / 3.0 * tc[2] + parm.HO2_hi[3] / 4.0 * tc[3] +
+                 parm.HO2_hi[4] / 5.0 * tc[4] + (parm.HO2_hi[5] - parm.HO2_lo[5])* invT;
     /*species 7: H2O2 */
-    species[7] = H2O2_hi[0] - 1.0 + H2O2_hi[1] / 2.0 * tc[1] +
-                 H2O2_hi[2] / 3.0 * tc[2] + H2O2_hi[3] / 4.0 * tc[3] +
-                 H2O2_hi[4] / 5.0 * tc[4] + (H2O2_hi[5] - H2O2_lo[5])* invT;
+    species[7] = parm.H2O2_hi[0] - 1.0 + parm.H2O2_hi[1] / 2.0 * tc[1] +
+                 parm.H2O2_hi[2] / 3.0 * tc[2] + parm.H2O2_hi[3] / 4.0 * tc[3] +
+                 parm.H2O2_hi[4] / 5.0 * tc[4] + (parm.H2O2_hi[5] - parm.H2O2_lo[5])* invT;
     /*species 8: N2 */
-    species[8] = N2_hi[0] - 1.0 + N2_hi[1] / 2.0 * tc[1] +
-                 N2_hi[2] / 3.0 * tc[2] + N2_hi[3] / 4.0 * tc[3] +
-                 N2_hi[4] / 5.0 * tc[4] + (N2_hi[5] - N2_lo[5])* invT;
+    species[8] = parm.N2_hi[0] - 1.0 + parm.N2_hi[1] / 2.0 * tc[1] +
+                 parm.N2_hi[2] / 3.0 * tc[2] + parm.N2_hi[3] / 4.0 * tc[3] +
+                 parm.N2_hi[4] / 5.0 * tc[4] + (parm.N2_hi[5] - parm.N2_lo[5])* invT;
   }
 }
 
 // species enthalpy, dimension: J/kg
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void speciesEnthalpy(Real T, Real* species) noexcept {
+void speciesEnthalpy(Real T, Real* species, Parm const& parm) noexcept {
   Real tc[] = {T, T * T, T * T * T, T * T * T * T, T*T*T*T*T};
 
   /*species with midpoint at T=1000 kelvin */
   if (T < 1000) {
     /*species 0: H2 */
-    species[0] = H2_lo[0] * tc[0] + H2_lo[1] / 2.0 * tc[1] +
-                 H2_lo[2] / 3.0 * tc[2] + H2_lo[3] / 4.0 * tc[3] +
-                 H2_lo[4] / 5.0 * tc[4];
+    species[0] = parm.H2_lo[0] * tc[0] + parm.H2_lo[1] / 2.0 * tc[1] +
+                 parm.H2_lo[2] / 3.0 * tc[2] + parm.H2_lo[3] / 4.0 * tc[3] +
+                 parm.H2_lo[4] / 5.0 * tc[4];
     /*species 1: O2 */
-    species[1] = O2_lo[0] * tc[0] + O2_lo[1] / 2.0 * tc[1] +
-                 O2_lo[2] / 3.0 * tc[2] + O2_lo[3] / 4.0 * tc[3] +
-                 O2_lo[4] / 5.0 * tc[4];
+    species[1] = parm.O2_lo[0] * tc[0] + parm.O2_lo[1] / 2.0 * tc[1] +
+                 parm.O2_lo[2] / 3.0 * tc[2] + parm.O2_lo[3] / 4.0 * tc[3] +
+                 parm.O2_lo[4] / 5.0 * tc[4];
     /*species 2: H2O */
-    species[2] = H2O_lo[0] * tc[0] + H2O_lo[1] / 2.0 * tc[1] +
-                 H2O_lo[2] / 3.0 * tc[2] + H2O_lo[3] / 4.0 * tc[3] +
-                 H2O_lo[4] / 5.0 * tc[4];
+    species[2] = parm.H2O_lo[0] * tc[0] + parm.H2O_lo[1] / 2.0 * tc[1] +
+                 parm.H2O_lo[2] / 3.0 * tc[2] + parm.H2O_lo[3] / 4.0 * tc[3] +
+                 parm.H2O_lo[4] / 5.0 * tc[4];
     /*species 3: H */
-    species[3] = H_lo[0] * tc[0] + H_lo[1] / 2.0 * tc[1] + H_lo[2] / 3.0 * tc[2] +
-                 H_lo[3] / 4.0 * tc[3] + H_lo[4] / 5.0 * tc[4];
+    species[3] = parm.H_lo[0] * tc[0] + parm.H_lo[1] / 2.0 * tc[1] + parm.H_lo[2] / 3.0 * tc[2] +
+                 parm.H_lo[3] / 4.0 * tc[3] + parm.H_lo[4] / 5.0 * tc[4];
     /*species 4: O */
-    species[4] = O_lo[0] * tc[0] + O_lo[1] / 2.0 * tc[1] + O_lo[2] / 3.0 * tc[2] +
-                 O_lo[3] / 4.0 * tc[3] + O_lo[4] / 5.0 * tc[4];
+    species[4] = parm.O_lo[0] * tc[0] + parm.O_lo[1] / 2.0 * tc[1] + parm.O_lo[2] / 3.0 * tc[2] +
+                 parm.O_lo[3] / 4.0 * tc[3] + parm.O_lo[4] / 5.0 * tc[4];
     /*species 5: OH */
-    species[5] = OH_lo[0] * tc[0] + OH_lo[1] / 2.0 * tc[1] +
-                 OH_lo[2] / 3.0 * tc[2] + OH_lo[3] / 4.0 * tc[3] +
-                 OH_lo[4] / 5.0 * tc[4];
+    species[5] = parm.OH_lo[0] * tc[0] + parm.OH_lo[1] / 2.0 * tc[1] +
+                 parm.OH_lo[2] / 3.0 * tc[2] + parm.OH_lo[3] / 4.0 * tc[3] +
+                 parm.OH_lo[4] / 5.0 * tc[4];
     /*species 6: HO2 */
-    species[6] = HO2_lo[0] * tc[0] + HO2_lo[1] / 2.0 * tc[1] +
-                 HO2_lo[2] / 3.0 * tc[2] + HO2_lo[3] / 4.0 * tc[3] +
-                 HO2_lo[4] / 5.0 * tc[4];
+    species[6] = parm.HO2_lo[0] * tc[0] + parm.HO2_lo[1] / 2.0 * tc[1] +
+                 parm.HO2_lo[2] / 3.0 * tc[2] + parm.HO2_lo[3] / 4.0 * tc[3] +
+                 parm.HO2_lo[4] / 5.0 * tc[4];
     /*species 7: H2O2 */
-    species[7] = H2O2_lo[0] * tc[0] + H2O2_lo[1] / 2.0 * tc[1] +
-                 H2O2_lo[2] / 3.0 * tc[2] + H2O2_lo[3] / 4.0 * tc[3] +
-                 H2O2_lo[4] / 5.0 * tc[4];
+    species[7] = parm.H2O2_lo[0] * tc[0] + parm.H2O2_lo[1] / 2.0 * tc[1] +
+                 parm.H2O2_lo[2] / 3.0 * tc[2] + parm.H2O2_lo[3] / 4.0 * tc[3] +
+                 parm.H2O2_lo[4] / 5.0 * tc[4];
     /*species 8: N2 */
-    species[8] = N2_lo[0] * tc[0] + N2_lo[1] / 2.0 * tc[1] +
-                 N2_lo[2] / 3.0 * tc[2] + N2_lo[3] / 4.0 * tc[3] +
-                 N2_lo[4] / 5.0 * tc[4];
+    species[8] = parm.N2_lo[0] * tc[0] + parm.N2_lo[1] / 2.0 * tc[1] +
+                 parm.N2_lo[2] / 3.0 * tc[2] + parm.N2_lo[3] / 4.0 * tc[3] +
+                 parm.N2_lo[4] / 5.0 * tc[4];
   } else {
-    species[0] = H2_hi[0] * tc[0] + H2_hi[1] / 2.0 * tc[1] +
-                 H2_hi[2] / 3.0 * tc[2] + H2_hi[3] / 4.0 * tc[3] +
-                 H2_hi[4] / 5.0 * tc[4] + (H2_hi[5] - H2_lo[5]);
+    species[0] = parm.H2_hi[0] * tc[0] + parm.H2_hi[1] / 2.0 * tc[1] +
+                 parm.H2_hi[2] / 3.0 * tc[2] + parm.H2_hi[3] / 4.0 * tc[3] +
+                 parm.H2_hi[4] / 5.0 * tc[4] + (parm.H2_hi[5] - parm.H2_lo[5]);
     /*species 1: O2 */
-    species[1] = O2_hi[0] * tc[0] + O2_hi[1] / 2.0 * tc[1] +
-                 O2_hi[2] / 3.0 * tc[2] + O2_hi[3] / 4.0 * tc[3] +
-                 O2_hi[4] / 5.0 * tc[4] + (O2_hi[5] - O2_lo[5]);
+    species[1] = parm.O2_hi[0] * tc[0] + parm.O2_hi[1] / 2.0 * tc[1] +
+                 parm.O2_hi[2] / 3.0 * tc[2] + parm.O2_hi[3] / 4.0 * tc[3] +
+                 parm.O2_hi[4] / 5.0 * tc[4] + (parm.O2_hi[5] - parm.O2_lo[5]);
     /*species 2: H2O */
-    species[2] = H2O_hi[0] * tc[0] + H2O_hi[1] / 2.0 * tc[1] +
-                 H2O_hi[2] / 3.0 * tc[2] + H2O_hi[3] / 4.0 * tc[3] +
-                 H2O_hi[4] / 5.0 * tc[4] + (H2O_hi[5] - H2O_lo[5]);
+    species[2] = parm.H2O_hi[0] * tc[0] + parm.H2O_hi[1] / 2.0 * tc[1] +
+                 parm.H2O_hi[2] / 3.0 * tc[2] + parm.H2O_hi[3] / 4.0 * tc[3] +
+                 parm.H2O_hi[4] / 5.0 * tc[4] + (parm.H2O_hi[5] - parm.H2O_lo[5]);
     /*species 3: H */
-    species[3] = H_hi[0] * tc[0] + H_hi[1] / 2.0 * tc[1] + H_hi[2] / 3.0 * tc[2] +
-                 H_hi[3] / 4.0 * tc[3] + H_hi[4] / 5.0 * tc[4] +
-                 (H_hi[5] - H_lo[5]);
+    species[3] = parm.H_hi[0] * tc[0] + parm.H_hi[1] / 2.0 * tc[1] + parm.H_hi[2] / 3.0 * tc[2] +
+                 parm.H_hi[3] / 4.0 * tc[3] + parm.H_hi[4] / 5.0 * tc[4] +
+                 (parm.H_hi[5] - parm.H_lo[5]);
     /*species 4: O */
-    species[4] = O_hi[0] * tc[0] + O_hi[1] / 2.0 * tc[1] + O_hi[2] / 3.0 * tc[2] +
-                 O_hi[3] / 4.0 * tc[3] + O_hi[4] / 5.0 * tc[4] +
-                 (O_hi[5] - O_lo[5]);
+    species[4] = parm.O_hi[0] * tc[0] + parm.O_hi[1] / 2.0 * tc[1] + parm.O_hi[2] / 3.0 * tc[2] +
+                 parm.O_hi[3] / 4.0 * tc[3] + parm.O_hi[4] / 5.0 * tc[4] +
+                 (parm.O_hi[5] - parm.O_lo[5]);
     /*species 5: OH */
-    species[5] = OH_hi[0] * tc[0] + OH_hi[1] / 2.0 * tc[1] +
-                 OH_hi[2] / 3.0 * tc[2] + OH_hi[3] / 4.0 * tc[3] +
-                 OH_hi[4] / 5.0 * tc[4] + (OH_hi[5] - OH_lo[5]);
+    species[5] = parm.OH_hi[0] * tc[0] + parm.OH_hi[1] / 2.0 * tc[1] +
+                 parm.OH_hi[2] / 3.0 * tc[2] + parm.OH_hi[3] / 4.0 * tc[3] +
+                 parm.OH_hi[4] / 5.0 * tc[4] + (parm.OH_hi[5] - parm.OH_lo[5]);
     /*species 6: HO2 */
-    species[6] = HO2_hi[0] * tc[0] + HO2_hi[1] / 2.0 * tc[1] +
-                 HO2_hi[2] / 3.0 * tc[2] + HO2_hi[3] / 4.0 * tc[3] +
-                 HO2_hi[4] / 5.0 * tc[4] + (HO2_hi[5] - HO2_lo[5]);
+    species[6] = parm.HO2_hi[0] * tc[0] + parm.HO2_hi[1] / 2.0 * tc[1] +
+                 parm.HO2_hi[2] / 3.0 * tc[2] + parm.HO2_hi[3] / 4.0 * tc[3] +
+                 parm.HO2_hi[4] / 5.0 * tc[4] + (parm.HO2_hi[5] - parm.HO2_lo[5]);
     /*species 7: H2O2 */
-    species[7] = H2O2_hi[0] * tc[0] + H2O2_hi[1] / 2.0 * tc[1] +
-                 H2O2_hi[2] / 3.0 * tc[2] + H2O2_hi[3] / 4.0 * tc[3] +
-                 H2O2_hi[4] / 5.0 * tc[4] + (H2O2_hi[5] - H2O2_lo[5]);
+    species[7] = parm.H2O2_hi[0] * tc[0] + parm.H2O2_hi[1] / 2.0 * tc[1] +
+                 parm.H2O2_hi[2] / 3.0 * tc[2] + parm.H2O2_hi[3] / 4.0 * tc[3] +
+                 parm.H2O2_hi[4] / 5.0 * tc[4] + (parm.H2O2_hi[5] - parm.H2O2_lo[5]);
     /*species 8: N2 */
-    species[8] = N2_hi[0] * tc[0] + N2_hi[1] / 2.0 * tc[1] +
-                 N2_hi[2] / 3.0 * tc[2] + N2_hi[3] / 4.0 * tc[3] +
-                 N2_hi[4] / 5.0 * tc[4] + (N2_hi[5] - N2_lo[5]);
+    species[8] = parm.N2_hi[0] * tc[0] + parm.N2_hi[1] / 2.0 * tc[1] +
+                 parm.N2_hi[2] / 3.0 * tc[2] + parm.N2_hi[3] / 4.0 * tc[3] +
+                 parm.N2_hi[4] / 5.0 * tc[4] + (parm.N2_hi[5] - parm.N2_lo[5]);
   }
 }
 
@@ -772,15 +699,15 @@ void speciesEnthalpy(Real T, Real* species) noexcept {
 /* J/m^3*/
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKUBMS(Real T, const Real *rhoi, Real &ubms) noexcept {
+void CKUBMS(Real T, const Real *rhoi, Real &ubms, Parm const& parm) noexcept {
   Real result = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real ums[NSPECS]; /* temporary energy array */
-  Real RT = Ru * T; /*R*T */
-  speciesInternalEnergy(ums, tc);
+  Real RT = parm.Ru * T; /*R*T */
+  speciesInternalEnergy(ums, tc, parm);
   /*perform dot product + scaling by wt */
   for (int n = 0; n < NSPECS; ++n) {
-    result += rhoi[n] * ums[n] / mw[n];
+    result += rhoi[n] * ums[n] / parm.mw[n];
   }
 
   ubms = result * RT;
@@ -790,7 +717,7 @@ void CKUBMS(Real T, const Real *rhoi, Real &ubms) noexcept {
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void cp_R(Real *species, const Real *tc) noexcept {
+void cp_R(Real *species, const Real *tc, Parm const& parm) noexcept {
 
   /*temperature */
   Real T = tc[1];
@@ -798,106 +725,106 @@ void cp_R(Real *species, const Real *tc) noexcept {
   /*species with midpoint at T=1000 kelvin */
   if (T < 1000) {
     /*species 0: H2 */
-    species[0] = H2_lo[0] + H2_lo[1] * tc[1] + H2_lo[2] * tc[2] +
-                 H2_lo[3] * tc[3] + H2_lo[4] * tc[4];
+    species[0] = parm.H2_lo[0] + parm.H2_lo[1] * tc[1] + parm.H2_lo[2] * tc[2] +
+                 parm.H2_lo[3] * tc[3] + parm.H2_lo[4] * tc[4];
     /*species 1: O2 */
-    species[1] = O2_lo[0] + O2_lo[1] * tc[1] + O2_lo[2] * tc[2] +
-                 O2_lo[3] * tc[3] + O2_lo[4] * tc[4];
+    species[1] = parm.O2_lo[0] + parm.O2_lo[1] * tc[1] + parm.O2_lo[2] * tc[2] +
+                 parm.O2_lo[3] * tc[3] + parm.O2_lo[4] * tc[4];
     /*species 2: H2O */
-    species[2] = H2O_lo[0] + H2O_lo[1] * tc[1] + H2O_lo[2] * tc[2] +
-                 H2O_lo[3] * tc[3] + H2O_lo[4] * tc[4];
+    species[2] = parm.H2O_lo[0] + parm.H2O_lo[1] * tc[1] + parm.H2O_lo[2] * tc[2] +
+                 parm.H2O_lo[3] * tc[3] + parm.H2O_lo[4] * tc[4];
     /*species 3: H */
-    species[3] = H_lo[0] + H_lo[1] * tc[1] + H_lo[2] * tc[2] +
-                 H_lo[3] * tc[3] + H_lo[4] * tc[4];
+    species[3] = parm.H_lo[0] + parm.H_lo[1] * tc[1] + parm.H_lo[2] * tc[2] +
+                 parm.H_lo[3] * tc[3] + parm.H_lo[4] * tc[4];
     /*species 4: O */
-    species[4] = O_lo[0] + O_lo[1] * tc[1] + O_lo[2] * tc[2] +
-                 O_lo[3] * tc[3] + O_lo[4] * tc[4];
+    species[4] = parm.O_lo[0] + parm.O_lo[1] * tc[1] + parm.O_lo[2] * tc[2] +
+                 parm.O_lo[3] * tc[3] + parm.O_lo[4] * tc[4];
     /*species 5: OH */
-    species[5] = OH_lo[0] + OH_lo[1] * tc[1] + OH_lo[2] * tc[2] +
-                 OH_lo[3] * tc[3] + OH_lo[4] * tc[4];
+    species[5] = parm.OH_lo[0] + parm.OH_lo[1] * tc[1] + parm.OH_lo[2] * tc[2] +
+                 parm.OH_lo[3] * tc[3] + parm.OH_lo[4] * tc[4];
     /*species 6: HO2 */
-    species[6] = HO2_lo[0] + HO2_lo[1] * tc[1] + HO2_lo[2] * tc[2] +
-                 HO2_lo[3] * tc[3] + HO2_lo[4] * tc[4];
+    species[6] = parm.HO2_lo[0] + parm.HO2_lo[1] * tc[1] + parm.HO2_lo[2] * tc[2] +
+                 parm.HO2_lo[3] * tc[3] + parm.HO2_lo[4] * tc[4];
     /*species 7: H2O2 */
-    species[7] = H2O2_lo[0] + H2O2_lo[1] * tc[1] + H2O2_lo[2] * tc[2] +
-                 H2O2_lo[3] * tc[3] + H2O2_lo[4] * tc[4];
+    species[7] = parm.H2O2_lo[0] + parm.H2O2_lo[1] * tc[1] + parm.H2O2_lo[2] * tc[2] +
+                 parm.H2O2_lo[3] * tc[3] + parm.H2O2_lo[4] * tc[4];
     /*species 8: N2 */
-    species[8] = N2_lo[0] + N2_lo[1] * tc[1] + N2_lo[2] * tc[2] +
-                 N2_lo[3] * tc[3] + N2_lo[4] * tc[4];
+    species[8] = parm.N2_lo[0] + parm.N2_lo[1] * tc[1] + parm.N2_lo[2] * tc[2] +
+                 parm.N2_lo[3] * tc[3] + parm.N2_lo[4] * tc[4];
   } else {
     /*species 0: H2 */
-    species[0] = H2_hi[0] + H2_hi[1] * tc[1] + H2_hi[2] * tc[2] +
-                 H2_hi[3] * tc[3] + H2_hi[4] * tc[4];
+    species[0] = parm.H2_hi[0] + parm.H2_hi[1] * tc[1] + parm.H2_hi[2] * tc[2] +
+                 parm.H2_hi[3] * tc[3] + parm.H2_hi[4] * tc[4];
     /*species 1: O2 */
-    species[1] = O2_hi[0] + O2_hi[1] * tc[1] + O2_hi[2] * tc[2] +
-                 O2_hi[3] * tc[3] + O2_hi[4] * tc[4];
+    species[1] = parm.O2_hi[0] + parm.O2_hi[1] * tc[1] + parm.O2_hi[2] * tc[2] +
+                 parm.O2_hi[3] * tc[3] + parm.O2_hi[4] * tc[4];
     /*species 2: H2O */
-    species[2] = H2O_hi[0] + H2O_hi[1] * tc[1] + H2O_hi[2] * tc[2] +
-                 H2O_hi[3] * tc[3] + H2O_hi[4] * tc[4];
+    species[2] = parm.H2O_hi[0] + parm.H2O_hi[1] * tc[1] + parm.H2O_hi[2] * tc[2] +
+                 parm.H2O_hi[3] * tc[3] + parm.H2O_hi[4] * tc[4];
     /*species 3: H */
-    species[3] = H_hi[0] + H_hi[1] * tc[1] + H_hi[2] * tc[2] +
-                 H_hi[3] * tc[3] + H_hi[4] * tc[4];
+    species[3] = parm.H_hi[0] + parm.H_hi[1] * tc[1] + parm.H_hi[2] * tc[2] +
+                 parm.H_hi[3] * tc[3] + parm.H_hi[4] * tc[4];
     /*species 4: O */
-    species[4] = O_hi[0] + O_hi[1] * tc[1] + O_hi[2] * tc[2] +
-                 O_hi[3] * tc[3] + O_hi[4] * tc[4];
+    species[4] = parm.O_hi[0] + parm.O_hi[1] * tc[1] + parm.O_hi[2] * tc[2] +
+                 parm.O_hi[3] * tc[3] + parm.O_hi[4] * tc[4];
     /*species 5: OH */
-    species[5] = OH_hi[0] + OH_hi[1] * tc[1] + OH_hi[2] * tc[2] +
-                 OH_hi[3] * tc[3] + OH_hi[4] * tc[4];
+    species[5] = parm.OH_hi[0] + parm.OH_hi[1] * tc[1] + parm.OH_hi[2] * tc[2] +
+                 parm.OH_hi[3] * tc[3] + parm.OH_hi[4] * tc[4];
     /*species 6: HO2 */
-    species[6] = HO2_hi[0] + HO2_hi[1] * tc[1] + HO2_hi[2] * tc[2] +
-                 HO2_hi[3] * tc[3] + HO2_hi[4] * tc[4];
+    species[6] = parm.HO2_hi[0] + parm.HO2_hi[1] * tc[1] + parm.HO2_hi[2] * tc[2] +
+                 parm.HO2_hi[3] * tc[3] + parm.HO2_hi[4] * tc[4];
     /*species 7: H2O2 */
-    species[7] = H2O2_hi[0] + H2O2_hi[1] * tc[1] + H2O2_hi[2] * tc[2] +
-                 H2O2_hi[3] * tc[3] + H2O2_hi[4] * tc[4];
+    species[7] = parm.H2O2_hi[0] + parm.H2O2_hi[1] * tc[1] + parm.H2O2_hi[2] * tc[2] +
+                 parm.H2O2_hi[3] * tc[3] + parm.H2O2_hi[4] * tc[4];
     /*species 8: N2 */
-    species[8] = N2_hi[0] + N2_hi[1] * tc[1] + N2_hi[2] * tc[2] +
-                 N2_hi[3] * tc[3] + N2_hi[4] * tc[4];
+    species[8] = parm.N2_hi[0] + parm.N2_hi[1] * tc[1] + parm.N2_hi[2] * tc[2] +
+                 parm.N2_hi[3] * tc[3] + parm.N2_hi[4] * tc[4];
   }
 }
 
 /*J/(m^3 K)*/
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKCPBS(Real T, const Real *rhoi, Real &cvbs) noexcept {
+void CKCPBS(Real T, const Real *rhoi, Real &cvbs, Parm const& parm) noexcept {
   Real result = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real cpor[NSPECS];                                   /* temporary storage */
-  cp_R(cpor, tc);
+  cp_R(cpor, tc, parm);
   /*multiply by y/molecularweight */
   for (int n = 0; n < NSPECS; ++n) {
-    result += cpor[n] * rhoi[n] / mw[n];
+    result += cpor[n] * rhoi[n] / parm.mw[n];
   }
 
-  cvbs = result * Ru;
+  cvbs = result * parm.Ru;
 }
 
 /*J/(m^3 K)*/
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKCVBS(Real T, const Real *rhoi, Real &cvbs) noexcept {
+void CKCVBS(Real T, const Real *rhoi, Real &cvbs, Parm const& parm) noexcept {
   Real result = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real cpor[NSPECS];                                   /* temporary storage */
-  cp_R(cpor, tc);
+  cp_R(cpor, tc, parm);
   /*multiply by y/molecularweight */
   for (int n = 0; n < NSPECS; ++n) {
-    result += (cpor[n]- 1.0) * rhoi[n] / mw[n];
+    result += (cpor[n]- 1.0) * rhoi[n] / parm.mw[n];
   }
 
-  cvbs = result* Ru;
+  cvbs = result* parm.Ru;
 }
 
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void CKGAMMA(Real T, const Real *rhoi, Real &gamma) noexcept {
+void CKGAMMA(Real T, const Real *rhoi, Real &gamma, Parm const& parm) noexcept {
   Real cp = 0, cv = 0;
   Real tc[] = {0, T, T * T, T * T * T, T * T * T * T}; /*temperature cache */
   Real cpor[NSPECS];                                   /* temporary storage */
-  cp_R(cpor, tc);
+  cp_R(cpor, tc, parm);
   /*multiply by y/molecularweight */
   for (int n = 0; n < NSPECS; ++n) {
-    cp += cpor[n] * rhoi[n] / mw[n];
-    cv += (cpor[n]- 1.0) * rhoi[n] / mw[n];
+    cp += cpor[n] * rhoi[n] / parm.mw[n];
+    cv += (cpor[n]- 1.0) * rhoi[n] / parm.mw[n];
   }
 
   gamma = cp/cv;
@@ -906,7 +833,7 @@ void CKGAMMA(Real T, const Real *rhoi, Real &gamma) noexcept {
 /* get temperature given internal energy in mass units and mass fracs */
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void GET_T_GIVEN_EY(Real e, Real *rhoi, Real &T) noexcept {
+void GET_T_GIVEN_EY(Real e, Real *rhoi, Real &T, Parm const& parm) noexcept {
   const int maxiter = 200;
   const Real tol = 1e-7;
   Real ein = e;
@@ -915,24 +842,24 @@ void GET_T_GIVEN_EY(Real e, Real *rhoi, Real &T) noexcept {
   Real e1, emin, emax, cv, t1, dt;
   int i; /* loop counter */
 
-  CKUBMS(tmin, rhoi, emin);
-  CKUBMS(tmax, rhoi, emax);
+  CKUBMS(tmin, rhoi, emin, parm);
+  CKUBMS(tmax, rhoi, emax, parm);
   if (ein < emin) {
     /*Linear Extrapolation below tmin */
-    CKCVBS(tmin, rhoi, cv);
+    CKCVBS(tmin, rhoi, cv, parm);
     T = tmin - (emin - ein) / cv;
     return;
   }
   if (ein > emax) {
     /*Linear Extrapolation above tmax */
-    CKCVBS(tmax, rhoi, cv);
+    CKCVBS(tmax, rhoi, cv, parm);
     T = tmax - (emax - ein) / cv;
     return;
   }
 
   double As=0;
   for (int n=0; n<NSPECS; ++n) {
-    As += A0[n]*Ru/mw[n]*rhoi[n];
+    As += parm.A0[n]*parm.Ru/parm.mw[n]*rhoi[n];
   }
 
   // initial value
@@ -942,8 +869,8 @@ void GET_T_GIVEN_EY(Real e, Real *rhoi, Real &T) noexcept {
   }
 
   for (i = 0; i < maxiter; ++i) {
-    CKUBMS(t1, rhoi, e1);
-    CKCVBS(t1, rhoi, cv);
+    CKUBMS(t1, rhoi, e1, parm);
+    CKCVBS(t1, rhoi, cv, parm);
 
     dt = (ein - e1) / cv;
     if (dt > 100.0) {
@@ -989,7 +916,9 @@ void gauss(Real *x, Real (&A)[NSPECS][NSPECS], const Real *b) noexcept {
     // Swap rows k and p
     if (p != k) {
       for (i = k; i < NSPECS + 1; i++) {
-        std::swap(U[p][i], U[k][i]);
+        auto tmp = U[p][i];
+        U[p][i] = U[k][i];
+        U[k][i] = tmp;
       }
     }
 
