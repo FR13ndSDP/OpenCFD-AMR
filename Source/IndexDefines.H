@@ -22,7 +22,7 @@
 #define NPRIM  7
 #endif
 
-#define NTHREADS 256
+#define NTHREADS 256 // not in use
 
 #ifdef CHEM
 #define NSPECS 9

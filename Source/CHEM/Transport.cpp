@@ -61,7 +61,7 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                 auto const& q = qtmp.array();
 
                 // For real gas
-                ParallelFor<NTHREADS>(bxg, 
+                ParallelFor(bxg, 
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
                     c2prim_rgas(i,j,k,statefab,sfab,q,*lparm);
@@ -71,7 +71,7 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                 int cdir = 0;
                 const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
 
-                ParallelFor<NTHREADS>(bxg, ncomp,
+                ParallelFor(bxg, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     Real un = q(i,j,k,QU);
@@ -79,14 +79,14 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                     fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
                 });
 
-                ParallelFor<NTHREADS>(xflxbx, ncomp,
+                ParallelFor(xflxbx, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     reconstruction_x(i,j,k,n,fp,fm,fxfab,*lparm);
                 });
 
                 if (do_visc) {
-                    ParallelFor<NTHREADS>(xflxbx,
+                    ParallelFor(xflxbx,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         diffusion_x(i,j,k,q,sfab,fxfab,dxinv,*lparm);
@@ -97,7 +97,7 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                 cdir = 1;
                 const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
 
-                ParallelFor<NTHREADS>(bxg, ncomp,
+                ParallelFor(bxg, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     Real un = q(i,j,k,QV);
@@ -105,14 +105,14 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                     fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
                 });
 
-                ParallelFor<NTHREADS>(yflxbx, ncomp,
+                ParallelFor(yflxbx, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     reconstruction_y(i,j,k,n,fp,fm,fyfab,*lparm);
                 });
 
                 if (do_visc) {
-                    ParallelFor<NTHREADS>(yflxbx,
+                    ParallelFor(yflxbx,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         diffusion_y(i,j,k,q,sfab,fyfab,dxinv,*lparm);
@@ -123,7 +123,7 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                 cdir = 2;
                 const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
 
-                ParallelFor<NTHREADS>(bxg, ncomp,
+                ParallelFor(bxg, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     Real un = q(i,j,k,QW);
@@ -131,24 +131,24 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                     fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
                 });
 
-                ParallelFor<NTHREADS>(zflxbx, ncomp,
+                ParallelFor(zflxbx, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     reconstruction_z(i,j,k,n,fp,fm,fzfab,*lparm);
                 });
 
                 if (do_visc) {
-                    ParallelFor<NTHREADS>(zflxbx,
+                    ParallelFor(zflxbx,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         diffusion_z(i,j,k,q,sfab,fzfab,dxinv,*lparm);
                     });
                 }
                 
-                ParallelFor<NTHREADS>(bx, ncomp,
+                ParallelFor(bx, ncomp,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
-                    divop(i,j,k,n,dsdtfab,AMREX_D_DECL(fxfab, fyfab, fzfab), dxinv);
+                    divop(i,j,k,n,dsdtfab,fxfab, fyfab, fzfab, dxinv);
                 });
 
 #ifdef AMREX_USE_GPU

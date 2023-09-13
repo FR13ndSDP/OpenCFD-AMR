@@ -18,29 +18,25 @@ EBR::errorEst (TagBoxArray& tags, int, int, Real time, int, int)
 
     if (!refine_boxes.empty())
     {
-        const Real* problo = geom.ProbLo();
-        const Real* dx = geom.CellSize();
-
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
-        for (MFIter mfi(tags, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        const auto problo = geom.ProbLoArray();
+        const auto dx = geom.CellSizeArray();
+        const auto n_refine_boxes = int(refine_boxes.size());
+        auto const* boxes = dp_refine_boxes;
+        
+        auto const& tagma = tags.arrays();
+        ParallelFor(tags,
+        [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
         {
-            auto& fab = tags[mfi];
-            const Box& bx = fab.box();
-            for (BoxIterator bi(bx); bi.ok(); ++bi)
-            {
-                const IntVect& cell = bi();
-                RealVect pos {AMREX_D_DECL((cell[0]+Real(0.5))*dx[0]+problo[0],
-                                           (cell[1]+Real(0.5))*dx[1]+problo[1],
-                                           (cell[2]+Real(0.5))*dx[2]+problo[2])};
-                for (const auto& rbx : refine_boxes) {
-                    if (rbx.contains(pos)) {
-                        fab(cell) = TagBox::SET;
-                    }
+            RealVect pos {(i+0.5)*dx[0]+problo[0],
+                          (j+0.5)*dx[1]+problo[1],
+                          (k+0.5)*dx[2]+problo[2]};
+            for (int irb = 0; irb < n_refine_boxes; ++irb) {
+                if (boxes[irb].contains(pos)) {
+                    tagma[box_no](i,j,k) = TagBox::SET;
                 }
             }
-        }
+        });
+        Gpu::streamSynchronize();
     }
 
     if (level < refine_max_dengrad_lev)

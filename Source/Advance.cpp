@@ -238,7 +238,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     auto const& fm = fmtmp.array();
 
                     // For perfect gas
-                    ParallelFor<NTHREADS>(bxg, 
+                    ParallelFor(bxg, 
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         c2prim(i,j,k,sfab,q,*lparm);
@@ -249,20 +249,20 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
 
                     // flux split
-                    ParallelFor<NTHREADS>(bxg,
+                    ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         flux_split_x(i,j,k,fp,fm,q,*lparm);
                     });
 
-                    ParallelFor<NTHREADS>(xflxbx, ncomp,
+                    ParallelFor(xflxbx, ncomp,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         reconstruction_x(i,j,k,n,fp,fm,fxfab,*lparm);
                     });
 
                     if (do_visc) {
-                        ParallelFor<NTHREADS>(xflxbx,
+                        ParallelFor(xflxbx,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
                             compute_visc_x(i,j,k,q,fxfab,dxinv,*lparm);
@@ -274,20 +274,20 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     cdir = 1;
                     const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NTHREADS>(bxg,
+                    ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         flux_split_y(i,j,k,fp,fm,q,*lparm);
                     });
 
-                    ParallelFor<NTHREADS>(yflxbx, ncomp,
+                    ParallelFor(yflxbx, ncomp,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         reconstruction_y(i,j,k,n,fp,fm,fyfab,*lparm);
                     });
 
                     if (do_visc) {
-                        ParallelFor<NTHREADS>(yflxbx,
+                        ParallelFor(yflxbx,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
                             compute_visc_y(i,j,k,q,fyfab,dxinv,*lparm);
@@ -298,27 +298,27 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     cdir = 2;
                     const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
 
-                    ParallelFor<NTHREADS>(bxg,
+                    ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
                         flux_split_z(i,j,k,fp,fm,q,*lparm);
                     });
 
-                    ParallelFor<NTHREADS>(zflxbx, ncomp,
+                    ParallelFor(zflxbx, ncomp,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         reconstruction_z(i,j,k,n,fp,fm,fzfab,*lparm);
                     });
 
                     if (do_visc) {
-                        ParallelFor<NTHREADS>(zflxbx,
+                        ParallelFor(zflxbx,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
                             compute_visc_z(i,j,k,q,fzfab,dxinv,*lparm);
                         });
                     }
 
-                    ParallelFor<NTHREADS>(bx, ncomp,
+                    ParallelFor(bx, ncomp,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                     {
                         divop(i,j,k,n,dsdtfab,fxfab, fyfab, fzfab, dxinv);

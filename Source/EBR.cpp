@@ -19,7 +19,7 @@ constexpr int EBR::NUM_GROW;
 BCRec     EBR::phys_bc;
 
 int       EBR::verbose = 0;
-IntVect   EBR::hydro_tile_size {AMREX_D_DECL(1024,16,16)};
+IntVect   EBR::hydro_tile_size {1024,16,16};
 Real      EBR::cfl       = 0.3;
 bool      EBR::do_reflux = true;
 bool      EBR::do_visc = true;
@@ -32,6 +32,7 @@ Real      EBR::stop_time = 0.0;
 int       EBR::max_step = -1;
 int       EBR::refine_max_dengrad_lev   = -1;
 Real      EBR::refine_dengrad           = 1.0e10;
+RealBox*  EBR::dp_refine_boxes;
 std::string EBR::time_integration       = "RK2";
 Vector<RealBox> EBR::refine_boxes;
 int       EBR::refine_cutcells = 1;
@@ -468,6 +469,16 @@ EBR::read_params ()
         refine_boxes.emplace_back(refboxlo.data(), refboxhi.data());
         ++irefbox;
     }
+
+    if (!refine_boxes.empty()) {
+#ifdef AMREX_USE_GPU
+        dp_refine_boxes = (RealBox*)The_Arena()->alloc(sizeof(RealBox)*refine_boxes.size());
+        Gpu::htod_memcpy_async(dp_refine_boxes, refine_boxes.data(), sizeof(RealBox)*refine_boxes.size());
+#else
+        dp_refine_boxes = refine_boxes.data();
+#endif
+    }
+
     pp.query("time_integration", time_integration);
     pp.query("eos_gamma", h_parm->eos_gamma);
     pp.query("eos_m"   , h_parm->eos_m);
@@ -483,6 +494,8 @@ EBR::read_params ()
     ParmParse pg;
     pg.query("stop_time",stop_time);
     pg.query("max_step",max_step);
+
+    amrex::Gpu::streamSynchronize();
 }
 
 void

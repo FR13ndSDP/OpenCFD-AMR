@@ -114,7 +114,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     });
 
     if (do_visc) {
-        ParallelFor<NTHREADS>(xflxbx,
+        ParallelFor(xflxbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             eb_compute_visc_x(i,j,k,q,fxfab,flag,dxinv,weights,*lparm);
@@ -137,7 +137,7 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     });
 
     if (do_visc) {
-        ParallelFor<NTHREADS>(yflxbx,
+        ParallelFor(yflxbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             eb_compute_visc_y(i,j,k,q,fyfab,flag,dxinv,weights,*lparm);
@@ -160,22 +160,34 @@ EBR::eb_compute_dSdt_box (const Box& bx,
     });
 
     if (do_visc) {
-        ParallelFor<NTHREADS>(zflxbx,
+        ParallelFor(zflxbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             eb_compute_visc_z(i,j,k,q,fzfab,flag,dxinv,weights,*lparm);
         });
     }
 
-    ParallelFor(bx,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-    {
-       eb_compute_div(i,j,k,q, divc_arr,
-                      fxfab, fyfab, fzfab,
-                      flag, vfrac, bcent,
-                      apx, apy, apz,
-                      fcx, fcy, fcz, dxinv, *lparm, do_visc);
-    });
+    if (do_visc) {
+        ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eb_compute_div_visc(i,j,k,q, divc_arr,
+                            fxfab, fyfab, fzfab,
+                            flag, vfrac, bcent,
+                            apx, apy, apz,
+                            fcx, fcy, fcz, dxinv, *lparm);
+        });
+    } else {
+        ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eb_compute_div(i,j,k,q, divc_arr,
+                            fxfab, fyfab, fzfab,
+                            flag, vfrac, bcent,
+                            apx, apy, apz,
+                            fcx, fcy, fcz, dxinv, *lparm);
+        });  
+    }
 
     if (do_redistribute) {
         auto const &lo = bx.smallEnd();

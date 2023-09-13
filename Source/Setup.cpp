@@ -217,7 +217,7 @@ EBR::variableSetUp ()
     // Velocities
     // get velocity by momentum/density
     derive_lst.add("velocity",IndexType::TheCellType(),AMREX_SPACEDIM,
-                   {AMREX_D_DECL("ux", "uy", "uz")}, ebr_dervel,the_same_box);
+                   {"ux", "uy", "uz"}, ebr_dervel,the_same_box);
     derive_lst.addComponent("velocity",desc_lst,State_Type,Density,1+AMREX_SPACEDIM);
 
 #ifndef CHEM
@@ -278,4 +278,8 @@ EBR::variableCleanUp ()
     The_Arena()->free(d_prob_parm);
     desc_lst.clear();
     derive_lst.clear();
+    
+#ifdef AMREX_USE_GPU
+    The_Arena()->free(dp_refine_boxes);
+#endif
 }

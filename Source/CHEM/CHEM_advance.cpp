@@ -21,7 +21,7 @@ void EBR::chemical_advance(Real dt)
 
         Parm const* lparm = d_parm;
 
-        ParallelFor<NTHREADS>(bx,
+        ParallelFor(bx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             Real T, ei;
@@ -213,7 +213,7 @@ void EBR::flow_advance_multi(Real time, Real dt, int iteration, int ncycle)
         auto const& rhoi = Spec_new.array(mfi);
         auto const& sfab = S_new.array(mfi);
 
-        ParallelFor<NTHREADS>(bx, 
+        ParallelFor(bx, 
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             Real rho0 = 0;
@@ -280,7 +280,7 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             auto const& fm = fmtmp.array();
 
             // For real gas
-            ParallelFor<NTHREADS>(bxg, 
+            ParallelFor(bxg, 
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 c2prim_rgas(i,j,k,sfab,rhoi,q,*lparm);
@@ -291,20 +291,20 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
 
             // flux split
-            ParallelFor<NTHREADS>(bxg,
+            ParallelFor(bxg,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 flux_split_x(i,j,k,fp,fm,q,*lparm);
             });
 
-            ParallelFor<NTHREADS>(xflxbx, ncomp,
+            ParallelFor(xflxbx, ncomp,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
             {
                 reconstruction_x(i,j,k,n,fp,fm,fxfab,*lparm);
             });
 
             if (do_visc) {
-                ParallelFor<NTHREADS>(xflxbx,
+                ParallelFor(xflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
                     compute_visc_x_multi(i,j,k,q,rhoi,fxfab,dxinv,*lparm);
@@ -315,20 +315,20 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             cdir = 1;
             const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
 
-            ParallelFor<NTHREADS>(bxg,
+            ParallelFor(bxg,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 flux_split_y(i,j,k,fp,fm,q,*lparm);
             });
 
-            ParallelFor<NTHREADS>(yflxbx, ncomp,
+            ParallelFor(yflxbx, ncomp,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
             {
                 reconstruction_y(i,j,k,n,fp,fm,fyfab,*lparm);
             });
 
             if (do_visc) {
-                ParallelFor<NTHREADS>(yflxbx,
+                ParallelFor(yflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
                     compute_visc_y_multi(i,j,k,q,rhoi,fyfab,dxinv,*lparm);
@@ -339,30 +339,30 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             cdir = 2;
             const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
 
-            ParallelFor<NTHREADS>(bxg,
+            ParallelFor(bxg,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 flux_split_z(i,j,k,fp,fm,q,*lparm);
             });
 
-            ParallelFor<NTHREADS>(zflxbx, ncomp,
+            ParallelFor(zflxbx, ncomp,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
             {
                 reconstruction_z(i,j,k,n,fp,fm,fzfab,*lparm);
             });
 
             if (do_visc) {
-                ParallelFor<NTHREADS>(zflxbx,
+                ParallelFor(zflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
                     compute_visc_z_multi(i,j,k,q,rhoi,fzfab,dxinv,*lparm);
                 });
             }
 
-            ParallelFor<NTHREADS>(bx, ncomp,
+            ParallelFor(bx, ncomp,
             [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
             {
-                divop(i,j,k,n,dsdtfab,AMREX_D_DECL(fxfab, fyfab, fzfab), dxinv);
+                divop(i,j,k,n,dsdtfab,fxfab, fyfab, fzfab, dxinv);
             });
 
             if (do_gravity) {

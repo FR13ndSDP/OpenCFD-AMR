@@ -354,7 +354,7 @@ void eb_wallflux(GpuArray<Real, NPRIM> const &qw,
 // only account for conservative update
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE 
-void eb_compute_div(
+void eb_compute_div_visc(
     int i, int j, int k,
     Array4<Real> const &q, Array4<Real> const& dsdt_arr,
     Array4<Real> const &fx, Array4<Real> const &fy, Array4<Real> const &fz,
@@ -362,7 +362,7 @@ void eb_compute_div(
     Array4<Real const> const &bcent,
     Array4<Real const> const &apx, Array4<Real const> const &apy, Array4<Real const> const &apz,
     Array4<Real const> const &fcx, Array4<Real const> const &fcy, Array4<Real const> const &fcz,
-    GpuArray<Real, AMREX_SPACEDIM> const &dxinv, Parm const &parm, bool do_visc) noexcept {
+    GpuArray<Real, AMREX_SPACEDIM> const &dxinv, Parm const &parm) noexcept {
 
   Real tmp = dxinv[0]/vfrc(i,j,k);
   // drop too small cells
@@ -392,16 +392,61 @@ void eb_compute_div(
       qw[n] = q(i,j,k,n);
     }
 
-    if (do_visc) {
-      eb_wallflux(qw, apx(i,j,k),apx(i+1,j,k),apy(i,j,k),apy(i,j+1,k),apz(i,j,k),apz(i,j,k+1),flux_wall,parm);
-    } else {
-      // the slip wall flux
-      flux_wall[URHO] = Real(0.0);
-      flux_wall[UMX] = (apx(i,j,k)-apx(i+1,j,k))*q(i,j,k,QPRES);
-      flux_wall[UMY] = (apy(i,j,k)-apy(i,j+1,k))*q(i,j,k,QPRES);
-      flux_wall[UMZ] = (apz(i,j,k)-apz(i,j,k+1))*q(i,j,k,QPRES);
-      flux_wall[UEDEN] = Real(0.0);
+    eb_wallflux(qw, apx(i,j,k),apx(i+1,j,k),apy(i,j,k),apy(i,j+1,k),apz(i,j,k),apz(i,j,k+1),flux_wall,parm);
+    // Here we assume dx == dy == dz
+    for (int n=0; n<NCONS; ++n) {
+      dsdt_arr(i, j, k, n) += flux_wall[n] * tmp;
     }
+  }
+  // The operations following this assume we have returned the negative of the
+  // divergence of fluxes.
+  for (int n=0; n<NCONS; ++n) {
+    dsdt_arr(i, j, k, n) *= -1.0;
+  }
+}
+
+// only account for conservative update
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE 
+void eb_compute_div(
+    int i, int j, int k,
+    Array4<Real> const &q, Array4<Real> const& dsdt_arr,
+    Array4<Real> const &fx, Array4<Real> const &fy, Array4<Real> const &fz,
+    Array4<EBCellFlag const> const &flag, Array4<Real const> const &vfrc,
+    Array4<Real const> const &bcent,
+    Array4<Real const> const &apx, Array4<Real const> const &apy, Array4<Real const> const &apz,
+    Array4<Real const> const &fcx, Array4<Real const> const &fcy, Array4<Real const> const &fcz,
+    GpuArray<Real, AMREX_SPACEDIM> const &dxinv, Parm const &parm) noexcept {
+
+  Real tmp = dxinv[0]/vfrc(i,j,k);
+  // drop too small cells
+  if (flag(i, j, k).isCovered()) {
+    for (int n=0; n<NCONS; ++n) {
+      dsdt_arr(i, j, k, n) = Real(0.0);
+    }
+  } else if (flag(i,j,k).isRegular()) {
+    for (int n=0; n<NCONS; ++n) {
+      dsdt_arr(i, j, k, n) = dxinv[0] * (fx(i + 1, j, k, n) - fx(i, j, k, n)) +
+                        dxinv[1] * (fy(i, j + 1, k, n) - fy(i, j, k, n)) +
+                        dxinv[2] * (fz(i, j, k + 1, n) - fz(i, j, k, n));
+    }
+  } else {
+    //TODO: 2nd-order correction for irregular flux or use Green-Gauss approach
+    for (int n=0; n<NCONS; ++n) {
+      dsdt_arr(i, j, k, n) = tmp *
+          (apx(i + 1, j, k) * fx(i+1,j,k,n) - apx(i, j, k) * fx(i,j,k,n) +
+          apy(i, j + 1, k) * fy(i,j+1,k,n) - apy(i, j, k) * fy(i,j,k,n) +
+          apz(i, j, k + 1) * fz(i,j,k+1,n) - apz(i, j, k) * fz(i,j,k,n));
+    }
+
+    GpuArray<Real, NCONS> flux_wall;
+    // the slip wall flux
+    flux_wall[URHO] = Real(0.0);
+    flux_wall[UMX] = (apx(i,j,k)-apx(i+1,j,k))*q(i,j,k,QPRES);
+    flux_wall[UMY] = (apy(i,j,k)-apy(i,j+1,k))*q(i,j,k,QPRES);
+    flux_wall[UMZ] = (apz(i,j,k)-apz(i,j,k+1))*q(i,j,k,QPRES);
+    flux_wall[UEDEN] = Real(0.0);
+    
     // Here we assume dx == dy == dz
     for (int n=0; n<NCONS; ++n) {
       dsdt_arr(i, j, k, n) += flux_wall[n] * tmp;
