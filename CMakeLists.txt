@@ -95,15 +95,18 @@ set(SRC_DIR ${CMAKE_SOURCE_DIR}/Source)
 add_subdirectory(${SRC_DIR})
 add_subdirectory(${EXEC_DIR})
 
+if (OPTION_MPI)
+   find_package(MPI REQUIRED CXX)
+endif()
+
 if ( NOT CMAKE_CXX_FLAGS )
   target_link_libraries(ebamr PUBLIC AMReX::Flags_CXX)
 endif ()
 
 if ( OPTION_USE_CHEM )
+   set(CMAKE_CXX_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
    if ( OPTION_CUDA )
       set(CMAKE_CUDA_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
-   else()
-      set(CMAKE_CXX_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
    endif ()
 endif ()
 ########################### AMReX #####################################
