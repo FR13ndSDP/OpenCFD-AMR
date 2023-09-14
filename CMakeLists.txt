@@ -27,7 +27,7 @@ option(OPTION_USE_CHEM      "Enable chemical reaction"     ON)
 #
 # Misc options
 #
-option(OPTION_ENABLE_TINY_PROFILE "Enable AMReX tiny profiler" OFF)
+option(OPTION_ENABLE_TINY_PROFILE "Enable AMReX tiny profiler" ON)
 option(OPTION_ENABLE_HDF5         "Enable HDF5 PlotFiles"      OFF)
 option(OPTION_ENABLE_HYPRE        "Enable Hypre"               OFF)
 option(OPTION_ENABLE_SUNDIALS     "Enable Sundials integrator" OFF)
