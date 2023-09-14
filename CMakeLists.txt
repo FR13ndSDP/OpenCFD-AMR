@@ -100,7 +100,11 @@ if ( NOT CMAKE_CXX_FLAGS )
 endif ()
 
 if ( OPTION_USE_CHEM )
-   set(CMAKE_CXX_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
+   if ( OPTION_CUDA )
+      set(CMAKE_CUDA_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
+   else()
+      set(CMAKE_CXX_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
+   endif ()
 endif ()
 ########################### AMReX #####################################
 
