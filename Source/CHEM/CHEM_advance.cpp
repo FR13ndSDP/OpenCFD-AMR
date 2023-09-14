@@ -218,8 +218,9 @@ void EBR::flow_advance_multi(Real time, Real dt, int iteration, int ncycle)
         {
             Real rho0 = 0;
             for (int n=0; n<NSPECS; ++n) {
-                if (rhoi(i,j,k,n) < 0)
+                if (rhoi(i,j,k,n) < 0) {
                     rhoi(i,j,k,n) = Real(0.0);
+                }
                 rho0 += rhoi(i,j,k,n);
             }
             Real tmp = sfab(i,j,k,URHO)/rho0;

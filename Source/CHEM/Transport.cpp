@@ -75,8 +75,9 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     Real un = q(i,j,k,QU);
-                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un))*sfab(i,j,k,n);
-                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
+                    Real c = q(i,j,k,QC);
+                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un)+c)*sfab(i,j,k,n);
+                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un)-c)*sfab(i,j,k,n);
                 });
 
                 ParallelFor(xflxbx, ncomp,
@@ -101,8 +102,9 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     Real un = q(i,j,k,QV);
-                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un))*sfab(i,j,k,n);
-                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
+                    Real c = q(i,j,k,QC);
+                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un)+c)*sfab(i,j,k,n);
+                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un)-c)*sfab(i,j,k,n);
                 });
 
                 ParallelFor(yflxbx, ncomp,
@@ -127,8 +129,9 @@ void EBR::scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, am
                 [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
                 {
                     Real un = q(i,j,k,QW);
-                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un))*sfab(i,j,k,n);
-                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un))*sfab(i,j,k,n);
+                    Real c = q(i,j,k,QC);
+                    fp(i,j,k,n) = 0.5*(un+amrex::Math::abs(un)+c)*sfab(i,j,k,n);
+                    fm(i,j,k,n) = 0.5*(un-amrex::Math::abs(un)-c)*sfab(i,j,k,n);
                 });
 
                 ParallelFor(zflxbx, ncomp,
