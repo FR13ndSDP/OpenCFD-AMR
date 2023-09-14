@@ -1,0 +1,68 @@
+max_step  = 10000
+stop_time = 0.2
+
+geometry.is_periodic = 0 0 1
+geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
+geometry.prob_lo     =   0.0      0.0      0.0
+geometry.prob_hi     =   1.8      0.18     0.045
+amr.n_cell           =   640      64       16
+
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+# 0 = Interior           3 = Symmetry
+# 1 = Inflow             4 = SlipWall
+# 2 = Outflow            5 = NoSlipWall
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+ebr.lo_bc       =  1   5   0
+ebr.hi_bc       =  2   2   0
+
+ebr.cfl = 0.3  # cfl number for hyperbolic system
+
+ebr.v = 2
+amr.v = 1
+
+# LOAD BALANCE
+amr.loadbalance_with_workestimates = 0
+amr.loadbalance_level0_int = 1000
+
+# REFINEMENT / REGRIDDING 
+amr.check_input     = 1       # 
+amr.max_level       = 2       # maximum level number allowed
+amr.ref_ratio       = 2 2 2 2 # refinement ratio
+amr.regrid_int      = 10 20 40 80 160 # how often to regrid
+amr.blocking_factor = 16
+amr.max_grid_size   = 256
+amr.n_error_buf     = 2 # number of buffer cells in error est
+amr.grid_eff        = 1     # what constitutes an efficient grid
+
+# CHECKPOINT FILES
+amr.checkpoint_files_output = 0
+amr.check_file              = chk    # root name of checkpoint file
+amr.check_int               = 100    # number of timesteps between checkpoints
+
+# PLOTFILES
+amr.plot_files_output = 1
+amr.plot_file         = plt     # root name of plotfile
+amr.plot_int          = 500     # number of timesteps between plotfiles
+amr.derive_plot_vars  = pressure velocity
+
+ebr.refine_dengrad = 0.05
+ebr.refine_max_dengrad_lev = 1
+ebr.do_reflux = true
+ebr.time_integration = RK3
+ebr.do_visc = true
+
+ebr.refine_box_lo_0 = 0.02 0 0
+ebr.refine_box_hi_0 = 1.45 0.002 1
+
+# EB parameters
+ebr.do_redistribute = false
+eb2.small_volfrac = 0.05
+eb2.geom_type = plane
+eb2.plane_point = 1.45 0.01 0.01
+eb2.plane_normal = 0.5 -1.1 0
+eb2.box_has_fluid_inside = 0
+
+# Error handling
+amrex.fpe_trap_invalid=1  # NaN, turn this off for GPU profiling
+amrex.fpe_trap_zero=0     # devided by zero
+amrex.fpe_trap_overflow=0 # overflow
