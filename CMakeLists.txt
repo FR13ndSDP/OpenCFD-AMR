@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project( ebamr
          DESCRIPTION "An AMR code for high order methods"
-         HOMEPAGE_URL "https://github.com/FR13ndSDP/ebamr-GPU"
+         HOMEPAGE_URL "https://github.com/FR13ndSDP/OpenCFD-AMR"
          VERSION 1.0
          LANGUAGES CXX
        )
