@@ -500,21 +500,21 @@ void flux_redist(int i, int j, int k, int n, IntVect const &lo, IntVect const &h
     }
   }
   divnc = totdivc/totfrac;
-  dsdt_arr(i,j,k,n) = vfrac(i,j,k)*divc_arr(i,j,k,n); //+ (1.0-vfrac(i,j,k))*divnc;
+  dsdt_arr(i,j,k,n) = vfrac(i,j,k)*divc_arr(i,j,k,n) + (1.0-vfrac(i,j,k))*divnc;
   // amrex::Print() << "divc : " << divc_arr(i,j,k,n) << ", divnc : " << divnc << ", div : " << dsdt_arr(i,j,k,n) << "\n"; 
 
-  // Real delta_M = vfrac(i,j,k)*(1.0-vfrac(i,j,k))*(divc_arr(i,j,k,n));
+  Real delta_M = vfrac(i,j,k)*(1.0-vfrac(i,j,k))*(divc_arr(i,j,k,n));
 
-  // for (int ii=-1; ii<=1; ++ii) {
-  //   for (int jj=-1; jj<=1; ++jj) {
-  //     for (int kk=-1; kk<=1; ++kk) {
-  //       if (ii!=0 || jj!= 0 || kk != 0) {
-  //         if ( (lo[0] <= i+ii) && (i+ii <= hi[0]) && (lo[1] <= j+jj) && (j+jj <= hi[1]) && (lo[2] <= k+kk) && (k+kk <= hi[2]) && (vfrac(i+ii, j+jj, k+kk) != 0))
-  //           dsdt_arr(i+ii,j+jj,k+kk,n) += vfrac(i+ii,j+jj,k+kk)*delta_M/(totfrac-vfrac(i,j,k));
-  //       }
-  //     }
-  //   }
-  // }
+  for (int ii=-1; ii<=1; ++ii) {
+    for (int jj=-1; jj<=1; ++jj) {
+      for (int kk=-1; kk<=1; ++kk) {
+        if (ii!=0 || jj!= 0 || kk != 0) {
+          if ( (lo[0] <= i+ii) && (i+ii <= hi[0]) && (lo[1] <= j+jj) && (j+jj <= hi[1]) && (lo[2] <= k+kk) && (k+kk <= hi[2]) && (vfrac(i+ii, j+jj, k+kk) != 0))
+            dsdt_arr(i+ii,j+jj,k+kk,n) += vfrac(i+ii,j+jj,k+kk)*delta_M/(totfrac-vfrac(i,j,k));
+        }
+      }
+    }
+  }
   // amrex::Print() << "After redist : " << dsdt_arr(i,j,k,n) << "\n"; 
 }
 
