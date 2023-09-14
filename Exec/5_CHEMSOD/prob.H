@@ -35,15 +35,15 @@ ebr_initdata (int i, int j, int k, amrex::Array4<amrex::Real> const& state,
         temp = prob_parm.T0;
     }
 
-    CKXTY(Xt, Yt);
+    CKXTY(Xt, Yt, parm);
 
-    CKRHOY(Pt, temp, Yt, rho);
+    CKRHOY(Pt, temp, Yt, rho, parm);
 
     for (int n=0; n<NSPECS; ++n) {
         rhoi[n] = rho * Yt[n];
     }
 
-    CKUBMS(temp, rhoi, et);
+    CKUBMS(temp, rhoi, et, parm);
 
     state(i,j,k,URHO ) = rho;
     state(i,j,k,UMX  ) = Real(0.0);
@@ -58,7 +58,8 @@ void
 ebr_initspec (int i, int j, int k, 
               amrex::Array4<amrex::Real const> const& state,
               amrex::Array4<amrex::Real> const& spec,
-              amrex::GeometryData const& geomdata)
+              amrex::GeometryData const& /*geomdata*/,
+              Parm const& parm)
 {
     using amrex::Real;
 
@@ -69,7 +70,7 @@ ebr_initspec (int i, int j, int k,
     Xt[0] = 0.667;
     Xt[1] = 0.333;
 
-    CKXTY(Xt, Yt);
+    CKXTY(Xt, Yt, parm);
 
     rho = state(i,j,k,URHO);
     for (int n=0; n<NSPECS; ++n) {
