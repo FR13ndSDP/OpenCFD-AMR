@@ -18,7 +18,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Util/CMake")
 #
 set(EBAMR_DIM             "3"        CACHE STRING "Number of physical dimensions")
 set(EBAMR_PRECISION       "DOUBLE"   CACHE STRING "Floating point precision SINGLE or DOUBLE")
-set(EBAMR_CASE            "7_JET"  CACHE STRING "Case folder")
+set(EBAMR_CASE            "7_JET"    CACHE STRING "Case folder")
 #
 # Physics options
 #
@@ -35,9 +35,9 @@ option(OPTION_ENABLE_SUNDIALS     "Enable Sundials integrator" OFF)
 #
 # HPC options
 #
-option(OPTION_MPI    "Enable MPI"    ON)
+option(OPTION_MPI    "Enable MPI"    OFF)
 option(OPTION_OPENMP "Enable OpenMP" OFF)
-option(OPTION_CUDA   "Enable CUDA"   OFF)
+option(OPTION_CUDA   "Enable CUDA"   ON)
 option(OPTION_HIP    "Enable HIP"    OFF)
 option(OPTION_SYCL   "Enable SyCL"   OFF)
 
@@ -45,7 +45,7 @@ option(OPTION_SYCL   "Enable SyCL"   OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 
 #
 # Setup Languages
@@ -58,6 +58,7 @@ if (OPTION_CUDA)
 endif ()
 if (OPTION_HIP)
    enable_language(HIP)
+   set(AMD_ARCH gfx906)
 endif ()
 
 # Checks
@@ -89,7 +90,7 @@ endif()
 
 ########################### EBAMR #####################################
 add_executable(ebamr "")
-set_target_properties(ebamr PROPERTIES OUTPUT_NAME "EBR${EBAMR_DIM}d.exe")
+set_target_properties(ebamr PROPERTIES OUTPUT_NAME "EBR${EBAMR_DIM}d.out")
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/Source)
 add_subdirectory(${SRC_DIR})
@@ -97,6 +98,10 @@ add_subdirectory(${EXEC_DIR})
 
 if (OPTION_MPI)
    find_package(MPI REQUIRED CXX)
+endif()
+
+if ( OPTION_HIP )
+   set(CMAKE_CXX_FLAGS "-pthread -DAMReX_AMD_ARCH=${AMD_ARCH}")
 endif()
 
 if ( NOT CMAKE_CXX_FLAGS )
@@ -110,7 +115,6 @@ if ( OPTION_USE_CHEM )
    endif ()
 endif ()
 ########################### AMReX #####################################
-
 message(STATUS "AMReX Configure Section")
 set(AMREX_SUBMOD_LOCATION "${CMAKE_SOURCE_DIR}/Submodules/amrex")
 include(SetAMReXOptions)
