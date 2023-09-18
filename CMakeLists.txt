@@ -11,6 +11,9 @@ message(STATUS "CMake version: ${CMAKE_VERSION}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Hygon DCU
+set(AMD_ARCH gfx906 CACHE STRING "DCU AMD ARCH")
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Util/CMake")
 
 #
@@ -58,7 +61,6 @@ if (OPTION_CUDA)
 endif ()
 if (OPTION_HIP)
    enable_language(HIP)
-   set(AMD_ARCH gfx906)
 endif ()
 
 # Checks
@@ -101,7 +103,7 @@ if (OPTION_MPI)
 endif()
 
 if ( OPTION_HIP )
-   set(CMAKE_CXX_FLAGS "-pthread -DAMReX_AMD_ARCH=${AMD_ARCH}")
+   set(CMAKE_CXX_FLAGS "-pthread --offload-arch=${AMD_ARCH}")
 endif()
 
 if ( NOT CMAKE_CXX_FLAGS )
