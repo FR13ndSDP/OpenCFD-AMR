@@ -1,18 +1,8 @@
 cmake_minimum_required(VERSION 3.22.1)
 
-project( ebamr
-         DESCRIPTION "An AMR code for high order methods"
-         HOMEPAGE_URL "https://github.com/FR13ndSDP/OpenCFD-AMR"
-         VERSION 1.0
-         LANGUAGES CXX
-       )
-
 message(STATUS "CMake version: ${CMAKE_VERSION}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# Hygon DCU
-set(AMD_ARCH gfx906 CACHE STRING "DCU AMD ARCH")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Util/CMake")
 
@@ -22,6 +12,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Util/CMake")
 set(EBAMR_DIM             "3"        CACHE STRING "Number of physical dimensions")
 set(EBAMR_PRECISION       "DOUBLE"   CACHE STRING "Floating point precision SINGLE or DOUBLE")
 set(EBAMR_CASE            "7_JET"    CACHE STRING "Case folder")
+
 #
 # Physics options
 #
@@ -30,7 +21,7 @@ option(OPTION_USE_CHEM      "Enable chemical reaction"     ON)
 #
 # Misc options
 #
-option(OPTION_ENABLE_TINY_PROFILE "Enable AMReX tiny profiler" ON)
+option(OPTION_ENABLE_TINY_PROFILE "Enable AMReX tiny profiler" OFF)
 option(OPTION_ENABLE_HDF5         "Enable HDF5 PlotFiles"      OFF)
 option(OPTION_ENABLE_HYPRE        "Enable Hypre"               OFF)
 option(OPTION_ENABLE_SUNDIALS     "Enable Sundials integrator" OFF)
@@ -45,10 +36,13 @@ option(OPTION_HIP    "Enable HIP"    OFF)
 option(OPTION_SYCL   "Enable SyCL"   OFF)
 
 # C++ Options
+if (OPTION_HIP)
+   set(CMAKE_CXX_COMPILER clang++) # or use hipcc for DTK <=23.04
+endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 #
 # Setup Languages
@@ -61,7 +55,17 @@ if (OPTION_CUDA)
 endif ()
 if (OPTION_HIP)
    enable_language(HIP)
+   # Hygon DCU
+   set(AMD_ARCH gfx906 CACHE STRING "DCU AMD ARCH")
 endif ()
+
+# project
+project( ebamr
+         DESCRIPTION "An AMR code for high order methods"
+         HOMEPAGE_URL "https://github.com/FR13ndSDP/OpenCFD-AMR"
+         VERSION 1.0
+         LANGUAGES CXX
+)
 
 # Checks
 if(EBAMR_DIM EQUAL 1)
@@ -86,11 +90,12 @@ foreach(subdir ${EBAMR_EXEC_SUBDIRS})
         endif()
     endforeach()
 endforeach()
-if (NOT EXEC_DIR)
+if (NOT EXEC_DIR) 
     message(FATAL_ERROR "EBAMR_CASE=${EBAMR_CASE} is not a valid case !")
 endif()
 
 ########################### EBAMR #####################################
+message(STATUS "Exec Configure Section")
 add_executable(ebamr "")
 set_target_properties(ebamr PROPERTIES OUTPUT_NAME "EBR${EBAMR_DIM}d.out")
 
@@ -102,7 +107,9 @@ if (OPTION_MPI)
    find_package(MPI REQUIRED CXX)
 endif()
 
-if ( OPTION_HIP )
+# detect if hipcc is used
+if ( ${CMAKE_CXX_COMPILER} MATCHES "(.*)hipcc$" )
+   # this is for DTK<=23.04 with hipcc
    set(CMAKE_CXX_FLAGS "-pthread --offload-arch=${AMD_ARCH}")
 endif()
 
