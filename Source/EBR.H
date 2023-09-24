@@ -135,22 +135,16 @@ protected:
   // Advance multispecies flow field at this level in time.
   void flow_advance_multi(amrex::Real time, amrex::Real dt, int iteration, int ncycle);
 
-  // Advance multispecies field at this level in time.
-  void specie_advance_multi(amrex::Real time, amrex::Real dt, int iteration, int ncycle);
-
   // Compute RHS with Multispecies
-  void compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, amrex::MultiFab &dSdt,
-                          amrex::Real dt, amrex::EBFluxRegister *fr_as_crse, amrex::EBFluxRegister *fr_as_fine);
-
-  // Compute RHS of species transport    
-  void scalar_dSdt(const amrex::MultiFab &S, const amrex::MultiFab &state, amrex::MultiFab &dSdt, 
-                   amrex::Real dt, amrex::EBFluxRegister *fine, amrex::EBFluxRegister *current);
+  void compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, amrex::MultiFab &dSdt, amrex::MultiFab &dSdt_spec,
+                          amrex::Real dt, amrex::EBFluxRegister *fine, amrex::EBFluxRegister *current, 
+                          amrex::EBFluxRegister *fine_spec, amrex::EBFluxRegister *current_spec);
 #endif
 
   // core function
   void compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt,
-                    amrex::Real dt, amrex::EBFluxRegister *fr_as_crse,
-                    amrex::EBFluxRegister *fr_as_fine);
+                    amrex::Real dt, amrex::EBFluxRegister *fine,
+                    amrex::EBFluxRegister *current);
 
   void eb_compute_dSdt_box (const amrex::Box& bx,
                             Array4<Real const> const& s_arr,

@@ -156,17 +156,21 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
 #ifndef CHEM
     flow_advance(time, dt, iteration, ncycle);
 #else
-    int iter = 5;
+    int iter = 3;
     Real dt1 = 0.5*dt;
-    Real dt2 = dt/iter;
+    Real dt2 = dt1/iter;
 
-    specie_advance_multi(time, dt1, iteration, ncycle);
-    flow_advance_multi(time, dt1, iteration, ncycle);
+    /*
+        Operator splitting: Introduction to Computational Astrophisical Hydrodynamics, Michael Zingale, p213.
+    */
+
     for (int n=0; n<iter; ++n) {
         chemical_advance(dt2);
     }
-    specie_advance_multi(time+dt1, dt1, iteration, ncycle);
-    flow_advance_multi(time+dt1, dt1, iteration, ncycle);
+    flow_advance_multi(time, dt, iteration, ncycle);
+    for (int n=0; n<iter; ++n) {
+        chemical_advance(dt2);
+    }
 #endif
 
     return dt;
@@ -252,7 +256,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        flux_split_x(i,j,k,fp,fm,q,*lparm);
+                        flux_split_x(i,j,k,fp,fm,q,sfab);
                     });
 
                     ParallelFor(xflxbx, ncomp,
@@ -277,7 +281,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        flux_split_y(i,j,k,fp,fm,q,*lparm);
+                        flux_split_y(i,j,k,fp,fm,q,sfab);
                     });
 
                     ParallelFor(yflxbx, ncomp,
@@ -301,7 +305,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        flux_split_z(i,j,k,fp,fm,q,*lparm);
+                        flux_split_z(i,j,k,fp,fm,q,sfab);
                     });
 
                     ParallelFor(zflxbx, ncomp,
@@ -336,10 +340,6 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                             dsdtfab(i,j,k,irhoE) += g * sfab(i,j,k,imz);
                         });
                     }
-#ifdef AMREX_USE_GPU
-                    // sync here to avoid out of if loop synchronize
-                    Gpu::streamSynchronize();
-#endif
                     // TODO: reflux for EB is too complicated!
                     if (do_reflux)
                     {
@@ -358,6 +358,10 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                                 fine->CrseAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
                         }
                     }
+#ifdef AMREX_USE_GPU
+                    // sync here to avoid out of if loop synchronize
+                    Gpu::streamSynchronize();
+#endif
                 }
                 else
                 {

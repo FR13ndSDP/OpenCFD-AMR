@@ -1,0 +1,349 @@
+#include "EBR.H"
+#include "Reconstruction.H"
+#include "Kernels.H"
+#include "FluxSplit.H"
+#include "CHEM_viscous.H"
+
+using namespace amrex;
+
+void EBR::flow_advance_multi(Real time, Real dt, int iteration, int ncycle)
+{
+    BL_PROFILE("EBR::flow_advance");
+
+    for (int i=0; i<NUM_STATE_TYPE; i++)
+    {
+        state[i].allocOldData();
+        state[i].swapTimeLevels(dt);
+    }
+
+    MultiFab& S_new = get_new_data(State_Type);
+    MultiFab& S_old = get_old_data(State_Type);
+
+    MultiFab& Spec_new = get_new_data(Spec_Type);
+    MultiFab& Spec_old = get_old_data(Spec_Type);
+
+    MultiFab& C_new = get_new_data(Cost_Type);
+    C_new.setVal(0.0);
+
+    // rhs
+    MultiFab dSdt(grids, dmap, NUM_STATE, 0, MFInfo(), Factory());
+    MultiFab dSdt_spec(grids, dmap, NSPECS, 0, MFInfo(), Factory());
+    // state with ghost cell
+    MultiFab Sborder(grids, dmap, NUM_STATE, NUM_GROW, MFInfo(), Factory());
+    MultiFab Spec_border(grids, dmap, NSPECS, NUM_GROW, MFInfo(), Factory());
+
+    EBFluxRegister* fine = nullptr; 
+    EBFluxRegister* current = nullptr; 
+    EBFluxRegister* fine_spec = nullptr; 
+    EBFluxRegister* current_spec = nullptr; 
+
+    // reflux for flow
+    if (do_reflux && level < parent->finestLevel())
+    {
+        EBR& fine_level = getLevel(level+1);
+        fine = &fine_level.flux_reg;
+        fine_spec = &fine_level.flux_reg_spec;
+        fine->reset();
+        fine_spec->reset();
+    }
+
+    if (do_reflux && level > 0)
+    {
+        current = &flux_reg;
+        current_spec = &flux_reg_spec;
+    }
+
+    // add Euler here for debug
+    if (time_integration == "Euler")
+    {
+        FillPatch(*this, Sborder, NUM_GROW, time, State_Type, 0, NUM_STATE);
+        FillPatch(*this, Spec_border, NUM_GROW, time, Spec_Type, 0, NSPECS);
+
+        compute_dSdt_multi(Sborder, Spec_border, dSdt, dSdt_spec, dt, fine, current, fine_spec, current_spec);
+        MultiFab::LinComb(S_new, 1.0, Sborder, 0, dt, dSdt, 0, 0, NUM_STATE, 0);
+        MultiFab::LinComb(Spec_new, 1.0, Spec_border, 0, dt, dSdt_spec, 0, 0, NSPECS, 0);
+    } else if (time_integration == "RK2")
+    {
+        // RK2 stage 1
+        FillPatch(*this, Sborder, NUM_GROW, time, State_Type, 0, NUM_STATE);
+        FillPatch(*this, Spec_border, NUM_GROW, time, Spec_Type, 0, NSPECS);
+        compute_dSdt_multi(Sborder, Spec_border, dSdt, dSdt_spec, 0.5*dt, fine, current, fine_spec, current_spec);
+        // U^* = U^n + dt * dUdt^n
+        // S_new = 1 * Sborder + dt * dSdt
+        MultiFab::LinComb(S_new, 1.0, Sborder, 0, dt, dSdt, 0, 0, NUM_STATE, 0);
+        MultiFab::LinComb(Spec_new, 1.0, Spec_border, 0, dt, dSdt_spec, 0, 0, NSPECS, 0);
+
+        // Rk2 stage 2
+        // after fillpatch Sborder is U^*
+        FillPatch(*this, Sborder, NUM_GROW, time+dt, State_Type, 0, NUM_STATE);
+        FillPatch(*this, Spec_border, NUM_GROW, time+dt, Spec_Type, 0, NSPECS);
+        compute_dSdt_multi(Sborder, Spec_border, dSdt, dSdt_spec, 0.5*dt, fine, current, fine_spec, current_spec);
+        // S_new = 0.5 * U^* + 0.5 * U^n + 0.5*dt*dUdt^*
+        MultiFab::LinComb(S_new, 0.5, Sborder, 0, 0.5, S_old, 0, 0, NUM_STATE, 0);
+        MultiFab::LinComb(Spec_new, 0.5, Spec_border, 0, 0.5, Spec_old, 0, 0, NSPECS, 0);
+        MultiFab::Saxpy(S_new, 0.5*dt, dSdt, 0, 0, NUM_STATE, 0);
+        MultiFab::Saxpy(Spec_new, 0.5*dt, dSdt_spec, 0, 0, NSPECS, 0);
+    } else {
+        amrex::Error("No such time scheme !!!");
+    }
+
+    // rescaling di
+    for (MFIter mfi(Spec_new, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.tilebox();
+        auto const& rhoi = Spec_new.array(mfi);
+        auto const& sfab = S_new.array(mfi);
+
+        ParallelFor(bx, 
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            Real rho0 = 0;
+            for (int n=0; n<NSPECS; ++n) {
+                if (rhoi(i,j,k,n) < 0) {
+                    rhoi(i,j,k,n) = Real(0.0);
+                }
+                rho0 += rhoi(i,j,k,n);
+            }
+            Real tmp = sfab(i,j,k,URHO)/rho0;
+            for (int n=0; n<NSPECS; ++n) {
+                rhoi(i,j,k,n) *= tmp;
+            }
+        }); 
+    }
+}
+
+void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, amrex::MultiFab &dSdt, amrex::MultiFab &dSdt_spec, amrex::Real dt, amrex::EBFluxRegister *fine, amrex::EBFluxRegister *current, amrex::EBFluxRegister *fine_spec, amrex::EBFluxRegister *current_spec)
+{
+    BL_PROFILE("EBR::compute_dSdt");
+
+    const auto dx = geom.CellSize();
+    const auto dxinv = geom.InvCellSizeArray();
+    const int ncomp = dSdt.nComp();
+    const int nspec = dSdt_spec.nComp();
+
+    Parm const* lparm = d_parm;
+
+    MultiFab& cost = get_new_data(Cost_Type);
+
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (Gpu::notInLaunchRegion())
+#endif
+    {
+        FArrayBox dm_as_fine(Box::TheUnitBox(), ncomp);
+
+        GpuArray<FArrayBox,AMREX_SPACEDIM> flux;
+        GpuArray<FArrayBox,AMREX_SPACEDIM> flux_spec;
+
+        for (MFIter mfi(S, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            auto wt = amrex::second();
+
+            const Box& bx = mfi.tilebox();
+
+            for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
+                flux[idim].resize(amrex::surroundingNodes(bx,idim),ncomp);
+                flux_spec[idim].resize(amrex::surroundingNodes(bx,idim),nspec);
+                flux[idim].setVal<RunOn::Device>(0.0);
+                flux_spec[idim].setVal<RunOn::Device>(0.0);
+            }
+
+            auto const& sfab = S.array(mfi);
+            auto const& rhoi = Spec.array(mfi);
+            auto const& dsdtfab = dSdt.array(mfi);
+            auto const& dsdtfab_spec = dSdt_spec.array(mfi);
+            auto const& fxfab = flux[0].array();
+            auto const& fyfab = flux[1].array();
+            auto const& fzfab = flux[2].array();
+            auto const& fxfab_spec = flux_spec[0].array();
+            auto const& fyfab_spec = flux_spec[1].array();
+            auto const& fzfab_spec = flux_spec[2].array();
+
+            // primitives, async arena
+            const Box& bxg = amrex::grow(bx,NUM_GROW);
+            FArrayBox qtmp(bxg, NPRIM, The_Async_Arena());
+            auto const& q = qtmp.array();
+
+            // positive and negative fluxes
+            FArrayBox fptmp(bxg, ncomp, The_Async_Arena());
+            FArrayBox fmtmp(bxg, ncomp, The_Async_Arena());
+            FArrayBox fptmp_spec(bxg, nspec, The_Async_Arena());
+            FArrayBox fmtmp_spec(bxg, nspec, The_Async_Arena());
+            auto const& fp = fptmp.array();
+            auto const& fm = fmtmp.array();
+            auto const& fp_spec = fptmp_spec.array();
+            auto const& fm_spec = fmtmp_spec.array();
+
+            // For real gas
+            ParallelFor(bxg, 
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                c2prim_rgas(i,j,k,sfab,rhoi,q,*lparm);
+            });
+
+            // X-direction
+            int cdir = 0;
+            const Box& xflxbx = amrex::surroundingNodes(bx, cdir);
+
+            // flux split
+            ParallelFor(bxg,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                flux_split_x(i,j,k,fp,fm,q,sfab);
+            });
+            ParallelFor(bxg, nspec,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                Real un = q(i,j,k,QU);
+                Real c = q(i,j,k,QC);
+                fp_spec(i,j,k,n) = Real(0.5)*(un+amrex::Math::abs(un)+c)*rhoi(i,j,k,n);
+                fm_spec(i,j,k,n) = Real(0.5)*(un-amrex::Math::abs(un)-c)*rhoi(i,j,k,n);
+            });
+
+            ParallelFor(xflxbx, ncomp,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                reconstruction_x(i,j,k,n,fp,fm,fxfab,*lparm);
+            });
+            ParallelFor(xflxbx, nspec,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                reconstruction_x(i,j,k,n,fp_spec,fm_spec,fxfab_spec,*lparm);
+            });
+
+            if (do_visc) {
+                ParallelFor(xflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    compute_visc_x_multi(i,j,k,q,rhoi,fxfab,dxinv,*lparm);
+                });
+                ParallelFor(xflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    diffusion_x(i,j,k,q,rhoi,fxfab_spec,dxinv,*lparm);
+                });
+            }
+
+            // Y-direction
+            cdir = 1;
+            const Box& yflxbx = amrex::surroundingNodes(bx, cdir);
+
+            ParallelFor(bxg,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                flux_split_y(i,j,k,fp,fm,q,sfab);
+            });
+            ParallelFor(bxg, nspec,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                Real un = q(i,j,k,QV);
+                Real c = q(i,j,k,QC);
+                fp_spec(i,j,k,n) = Real(0.5)*(un+amrex::Math::abs(un)+c)*rhoi(i,j,k,n);
+                fm_spec(i,j,k,n) = Real(0.5)*(un-amrex::Math::abs(un)-c)*rhoi(i,j,k,n);
+            });
+
+            ParallelFor(yflxbx, ncomp,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                reconstruction_y(i,j,k,n,fp,fm,fyfab,*lparm);
+            });
+            ParallelFor(yflxbx, nspec,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                reconstruction_y(i,j,k,n,fp_spec,fm_spec,fyfab_spec,*lparm);
+            });
+
+            if (do_visc) {
+                ParallelFor(yflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    compute_visc_y_multi(i,j,k,q,rhoi,fyfab,dxinv,*lparm);
+                });
+                ParallelFor(yflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    diffusion_y(i,j,k,q,rhoi,fyfab_spec,dxinv,*lparm);
+                });
+            }
+
+            // Z-direction
+            cdir = 2;
+            const Box& zflxbx = amrex::surroundingNodes(bx, cdir);
+
+            ParallelFor(bxg,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                flux_split_z(i,j,k,fp,fm,q,sfab);
+            });
+            ParallelFor(bxg, nspec,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                Real un = q(i,j,k,QW);
+                Real c = q(i,j,k,QC);
+                fp_spec(i,j,k,n) = Real(0.5)*(un+amrex::Math::abs(un)+c)*rhoi(i,j,k,n);
+                fm_spec(i,j,k,n) = Real(0.5)*(un-amrex::Math::abs(un)-c)*rhoi(i,j,k,n);
+            });
+
+            ParallelFor(zflxbx, ncomp,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                reconstruction_z(i,j,k,n,fp,fm,fzfab,*lparm);
+            });
+            ParallelFor(zflxbx, nspec,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                reconstruction_z(i,j,k,n,fp_spec,fm_spec,fzfab_spec,*lparm);
+            });
+
+            if (do_visc) {
+                ParallelFor(zflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    compute_visc_z_multi(i,j,k,q,rhoi,fzfab,dxinv,*lparm);
+                });
+                ParallelFor(zflxbx,
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    diffusion_z(i,j,k,q,rhoi,fzfab_spec,dxinv,*lparm);
+                });
+            }
+
+            ParallelFor(bx, ncomp,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                divop(i,j,k,n,dsdtfab,fxfab, fyfab, fzfab, dxinv);
+            });
+            ParallelFor(bx, nspec,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            {
+                divop(i,j,k,n,dsdtfab_spec,fxfab_spec, fyfab_spec, fzfab_spec, dxinv);
+            });
+            
+            // TODO: reflux for EB is too complicated!
+            if (do_reflux)
+            {
+                // the flux registers from the coarse or fine grid perspective
+                // NOTE: the flux register associated with flux_reg[lev] is associated
+                // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
+                if (current) {
+                // update the lev/lev-1 flux register (index lev)
+                    // for (int i=0; i<AMREX_SPACEDIM; i++)
+                        current->FineAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
+                        current_spec->FineAdd(mfi, {&flux_spec[0], &flux_spec[1], &flux_spec[2]}, dx, dt, RunOn::Device);
+                }
+
+                if (fine) {
+                // update the lev+1/lev flux register (index lev+1)
+                    // for (int i=0; i<AMREX_SPACEDIM; i++)
+                        fine->CrseAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
+                        fine_spec->CrseAdd(mfi, {&flux_spec[0], &flux_spec[1], &flux_spec[2]}, dx, dt, RunOn::Device);
+                }
+            }
+#ifdef AMREX_USE_GPU
+            // sync here to avoid out of if loop synchronize
+            Gpu::streamSynchronize();
+#endif
+            wt = (amrex::second() - wt) / bx.d_numPts();
+            cost[mfi].plus<RunOn::Device>(wt, bx);
+        }
+    }
+}

@@ -2,7 +2,7 @@ target_include_directories(ebamr PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_D
 
 target_sources(ebamr
      PRIVATE
-          Transport.cpp
+          Flow_advance.cpp
           CHEM_advance.cpp
           LiDryer.H
           CHEM_viscous.H

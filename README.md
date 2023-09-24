@@ -15,3 +15,4 @@ See the ReadtheDocs site: [Document](https://opencfd-amr-doc.readthedocs.io/)
 - [x] Chemical reaction
 - [ ] High order methods
 - [ ] LES modeling
+- [ ] DNN assited computing and modeling

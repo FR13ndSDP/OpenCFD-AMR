@@ -73,7 +73,9 @@ c2prim_rgas (int i, int j, int k,
     q(i,j,k,QT) = T;
     q(i,j,k,QPRES) = p;
 
-    CKGAMMA(T, rhoi, gama, parm);
+    // approximate
+    gama = p/ei + 1.0;
+    // CKGAMMA(T, rhoi, gama, parm);
     q(i,j,k,QGAMA) = gama;
     q(i,j,k,QC) = std::sqrt(gama*p/rho);
 }
