@@ -312,23 +312,51 @@ EBR::post_timestep (int iteration)
 {
     BL_PROFILE("EBR::post_timestep");
 
+    MultiFab& S_crse = get_new_data(State_Type);
+#ifdef CHEM
+    MultiFab& Spec_crse = get_new_data(Spec_Type);
+#endif
     if (do_reflux && level < parent->finestLevel()) {
         EBR& fine_level = getLevel(level+1);
-        MultiFab& S_crse = get_new_data(State_Type);
         MultiFab& S_fine = fine_level.get_new_data(State_Type);
         fine_level.flux_reg.Reflux(S_crse, *volfrac, S_fine, *fine_level.volfrac);
 #ifdef CHEM
-        MultiFab& Spec_crse = get_new_data(Spec_Type);
         MultiFab& Spec_fine = fine_level.get_new_data(Spec_Type);
         fine_level.flux_reg_spec.Reflux(Spec_crse, *volfrac, Spec_fine, *fine_level.volfrac);
 #endif
+        if (ParallelDescriptor::IOProcessor()) {
+            amrex::Print() << "Done reflux at level "<< level << " Iteration " << iteration << "\n";
+        }
     }
+
+#ifdef CHEM
+    // rescaling di for all levels
+    for (MFIter mfi(Spec_crse, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.tilebox();
+        auto const& rhoi = Spec_crse.array(mfi);
+        auto const& sfab = S_crse.array(mfi);
+
+        ParallelFor(bx, 
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            Real rho0 = 0;
+            for (int n=0; n<NSPECS; ++n) {
+                if (rhoi(i,j,k,n) < 0) {
+                    rhoi(i,j,k,n) = Real(0.0);
+                }
+                rho0 += rhoi(i,j,k,n);
+            }
+            Real tmp = sfab(i,j,k,URHO)/rho0;
+            for (int n=0; n<NSPECS; ++n) {
+                rhoi(i,j,k,n) *= tmp;
+            }
+        }); 
+    }
+#endif
 
     if (level < parent->finestLevel()) {
         avgDown();
-        // fillpatcher on level+1 needs to be reset because data on this
-        // level have changed.
-        getLevel(level+1).resetFillPatcher();
     }
 }
 

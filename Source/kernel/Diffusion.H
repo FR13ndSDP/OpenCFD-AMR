@@ -15,8 +15,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
 {
     using amrex::Real;
     // first compute temperature
-    Real Tl = q(i,j,k,QT);
-    Real Tr = q(i-1,j,k,QT);
+    Real Tr = q(i,j,k,QT);
+    Real Tl = q(i-1,j,k,QT);
     // derive mu
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
@@ -24,7 +24,7 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real ktl = mutl * parm.kOverMu;
     Real ktr = mutr * parm.kOverMu;
 
-    Real dTdx = (Tl-Tr)*dxinv[0];
+    Real dTdx = (Tr-Tl)*dxinv[0];
     Real dudx = (q(i,j,k,QU)-q(i-1,j,k,QU))*dxinv[0];
     Real dvdx = (q(i,j,k,QV)-q(i-1,j,k,QV))*dxinv[0];
     Real dwdx = (q(i,j,k,QW)-q(i-1,j,k,QW))*dxinv[0];
@@ -57,8 +57,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
 {
     using amrex::Real;
     // first compute temperature
-    Real Tl = q(i,j,k,QT);
-    Real Tr = q(i,j-1,k,QT);
+    Real Tr = q(i,j,k,QT);
+    Real Tl = q(i,j-1,k,QT);
     // derive mu
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
@@ -66,7 +66,7 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real ktl = mutl * parm.kOverMu;
     Real ktr = mutr * parm.kOverMu;
 
-    Real dTdy = (Tl-Tr)*dxinv[1];
+    Real dTdy = (Tr-Tl)*dxinv[1];
     Real dudy = (q(i,j,k,QU)-q(i,j-1,k,QU))*dxinv[1];
     Real dvdy = (q(i,j,k,QV)-q(i,j-1,k,QV))*dxinv[1];
     Real dwdy = (q(i,j,k,QW)-q(i,j-1,k,QW))*dxinv[1];
@@ -99,8 +99,8 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
 {
     using amrex::Real;
     // first compute temperature
-    Real Tl = q(i,j,k,QT);
-    Real Tr = q(i,j,k-1,QT);
+    Real Tr = q(i,j,k,QT);
+    Real Tl = q(i,j,k-1,QT);
     // derive mu
     Real mutl = parm.C_s*Tl*sqrt(Tl)/(Tl+parm.T_s);
     Real mutr = parm.C_s*Tr*sqrt(Tr)/(Tr+parm.T_s);
@@ -108,7 +108,7 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real ktl = mutl * parm.kOverMu;
     Real ktr = mutr * parm.kOverMu;
 
-    Real dTdz = (Tl-Tr)*dxinv[2];
+    Real dTdz = (Tr-Tl)*dxinv[2];
     Real dudz = (q(i,j,k,QU)-q(i,j,k-1,QU))*dxinv[2];
     Real dvdz = (q(i,j,k,QV)-q(i,j,k-1,QV))*dxinv[2];
     Real dwdz = (q(i,j,k,QW)-q(i,j,k-1,QW))*dxinv[2];

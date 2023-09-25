@@ -87,29 +87,6 @@ void EBR::flow_advance_multi(Real time, Real dt, int iteration, int ncycle)
         amrex::Error("No such time scheme !!!");
     }
 
-    // rescaling di
-    for (MFIter mfi(Spec_new, TilingIfNotGPU()); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.tilebox();
-        auto const& rhoi = Spec_new.array(mfi);
-        auto const& sfab = S_new.array(mfi);
-
-        ParallelFor(bx, 
-        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            Real rho0 = 0;
-            for (int n=0; n<NSPECS; ++n) {
-                if (rhoi(i,j,k,n) < 0) {
-                    rhoi(i,j,k,n) = Real(0.0);
-                }
-                rho0 += rhoi(i,j,k,n);
-            }
-            Real tmp = sfab(i,j,k,URHO)/rho0;
-            for (int n=0; n<NSPECS; ++n) {
-                rhoi(i,j,k,n) *= tmp;
-            }
-        }); 
-    }
 }
 
 void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, amrex::MultiFab &dSdt, amrex::MultiFab &dSdt_spec, amrex::Real dt, amrex::EBFluxRegister *fine, amrex::EBFluxRegister *current, amrex::EBFluxRegister *fine_spec, amrex::EBFluxRegister *current_spec)
@@ -133,6 +110,8 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
 
         GpuArray<FArrayBox,AMREX_SPACEDIM> flux;
         GpuArray<FArrayBox,AMREX_SPACEDIM> flux_spec;
+        // energy flux due to species diffusion
+        GpuArray<FArrayBox,AMREX_SPACEDIM> flux_diffuse;
 
         for (MFIter mfi(S, TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
@@ -145,6 +124,10 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                 flux_spec[idim].resize(amrex::surroundingNodes(bx,idim),nspec);
                 flux[idim].setVal<RunOn::Device>(0.0);
                 flux_spec[idim].setVal<RunOn::Device>(0.0);
+                if (do_visc) {
+                    flux_diffuse[idim].resize(amrex::surroundingNodes(bx,idim),nspec);
+                    flux_diffuse[idim].setVal<RunOn::Device>(0.0);
+                }
             }
 
             auto const& sfab = S.array(mfi);
@@ -157,11 +140,22 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             auto const& fxfab_spec = flux_spec[0].array();
             auto const& fyfab_spec = flux_spec[1].array();
             auto const& fzfab_spec = flux_spec[2].array();
+            auto const& fxfab_diff = flux_diffuse[0].array();
+            auto const& fyfab_diff = flux_diffuse[1].array();
+            auto const& fzfab_diff = flux_diffuse[2].array();
 
             // primitives, async arena
             const Box& bxg = amrex::grow(bx,NUM_GROW);
             FArrayBox qtmp(bxg, NPRIM, The_Async_Arena());
             auto const& q = qtmp.array();
+
+            // lambda mu and D
+            FArrayBox lambda_tmp(bxg, 1, The_Async_Arena());
+            FArrayBox mu_tmp(bxg, 1, The_Async_Arena());
+            FArrayBox D_tmp(bxg, NSPECS, The_Async_Arena());
+            auto const& lambda = lambda_tmp.array();
+            auto const& mu = mu_tmp.array();
+            auto const& D = D_tmp.array();
 
             // positive and negative fluxes
             FArrayBox fptmp(bxg, ncomp, The_Async_Arena());
@@ -179,6 +173,22 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             {
                 c2prim_rgas(i,j,k,sfab,rhoi,q,*lparm);
             });
+
+            if (do_visc) {
+                ParallelFor(bxg, 
+                [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                {
+                    Real Yt[NSPECS], Xt[NSPECS];
+                    Real T = q(i,j,k,QT);
+                    Real p = q(i,j,k,QPRES);
+                    for (int n=0; n<NSPECS; ++n) {
+                        Yt[n] = rhoi(i,j,k,n) / q(i,j,k,QRHO);
+                    }
+                    CKYTX(Yt, Xt, *lparm);
+                    mixtureProperties(T, Xt, mu(i,j,k), lambda(i,j,k), *lparm);
+                    getMixDiffCoeffsMass(i,j,k,T, p, Xt, D, *lparm);
+                });
+            }
 
             // X-direction
             int cdir = 0;
@@ -214,12 +224,12 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                 ParallelFor(xflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    compute_visc_x_multi(i,j,k,q,rhoi,fxfab,dxinv,*lparm);
+                    diffusion_x(i,j,k,q,rhoi,D,fxfab_spec,fxfab_diff, dxinv);
                 });
                 ParallelFor(xflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    diffusion_x(i,j,k,q,rhoi,fxfab_spec,dxinv,*lparm);
+                    compute_visc_x_multi(i,j,k,q,rhoi,lambda,mu,fxfab,fxfab_diff,dxinv,*lparm);
                 });
             }
 
@@ -256,12 +266,12 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                 ParallelFor(yflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    compute_visc_y_multi(i,j,k,q,rhoi,fyfab,dxinv,*lparm);
+                    diffusion_y(i,j,k,q,rhoi,D,fyfab_spec,fyfab_diff, dxinv);
                 });
                 ParallelFor(yflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    diffusion_y(i,j,k,q,rhoi,fyfab_spec,dxinv,*lparm);
+                    compute_visc_y_multi(i,j,k,q,rhoi,lambda,mu,fyfab,fyfab_diff,dxinv,*lparm);
                 });
             }
 
@@ -298,12 +308,12 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
                 ParallelFor(zflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    compute_visc_z_multi(i,j,k,q,rhoi,fzfab,dxinv,*lparm);
+                    diffusion_z(i,j,k,q,rhoi,D,fzfab_spec,fzfab_diff,dxinv);
                 });
                 ParallelFor(zflxbx,
                 [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                 {
-                    diffusion_z(i,j,k,q,rhoi,fzfab_spec,dxinv,*lparm);
+                    compute_visc_z_multi(i,j,k,q,rhoi,lambda,mu,fzfab,fzfab_diff,dxinv,*lparm);
                 });
             }
 
