@@ -324,9 +324,6 @@ EBR::post_timestep (int iteration)
         MultiFab& Spec_fine = fine_level.get_new_data(Spec_Type);
         fine_level.flux_reg_spec.Reflux(Spec_crse, *volfrac, Spec_fine, *fine_level.volfrac);
 #endif
-        if (ParallelDescriptor::IOProcessor()) {
-            amrex::Print() << "Done reflux at level "<< level << " Iteration " << iteration << "\n";
-        }
     }
 
 #ifdef CHEM
