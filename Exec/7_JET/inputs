@@ -47,7 +47,7 @@ amr.derive_plot_vars  = pressure velocity T
 
 ebr.refine_dengrad = 0.05
 ebr.refine_max_dengrad_lev = 4
-ebr.do_reflux = false
+ebr.do_reflux = true
 ebr.time_integration = RK2
 ebr.do_visc = true
 
