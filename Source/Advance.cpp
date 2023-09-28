@@ -156,7 +156,7 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
 #ifndef CHEM
     flow_advance(time, dt, iteration, ncycle);
 #else
-    int iter = 3;
+    int iter = level<=2? 4/int(pow(2,level)):1;
     Real dt1 = 0.5*dt;
     Real dt2 = dt1/iter;
 
@@ -256,7 +256,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        flux_split_x(i,j,k,fp,fm,q,sfab);
+                        flux_split_x(i,j,k,fp,fm,q,sfab,*lparm);
                     });
 
                     ParallelFor(xflxbx, ncomp,
@@ -281,7 +281,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        flux_split_y(i,j,k,fp,fm,q,sfab);
+                        flux_split_y(i,j,k,fp,fm,q,sfab,*lparm);
                     });
 
                     ParallelFor(yflxbx, ncomp,
@@ -305,7 +305,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     ParallelFor(bxg,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        flux_split_z(i,j,k,fp,fm,q,sfab);
+                        flux_split_z(i,j,k,fp,fm,q,sfab,*lparm);
                     });
 
                     ParallelFor(zflxbx, ncomp,

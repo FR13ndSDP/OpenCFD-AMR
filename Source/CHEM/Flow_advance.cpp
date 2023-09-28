@@ -198,15 +198,36 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             ParallelFor(bxg,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                flux_split_x(i,j,k,fp,fm,q,sfab);
+                flux_split_x(i,j,k,fp,fm,q,sfab,*lparm);
             });
-            ParallelFor(bxg, nspec,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            ParallelFor(bxg,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 Real un = q(i,j,k,QU);
                 Real c = q(i,j,k,QC);
-                fp_spec(i,j,k,n) = Real(0.5)*(un+amrex::Math::abs(un)+c)*rhoi(i,j,k,n);
-                fm_spec(i,j,k,n) = Real(0.5)*(un-amrex::Math::abs(un)-c)*rhoi(i,j,k,n);
+                Real gamma = q(i,j,k,QGAMA);
+
+                Real E1 = un;
+                Real E2 = un - c;
+                Real E3 = un + c;
+                Real E1P = (E1 + amrex::Math::abs(E1)) * Real(0.5);
+                Real E2P = (E2 + amrex::Math::abs(E2)) * Real(0.5);
+                Real E3P = (E3 + amrex::Math::abs(E3)) * Real(0.5);
+
+                Real E1M = E1 - E1P;
+                Real E2M = E2 - E2P;
+                Real E3M = E3 - E3P;
+
+                Real tmp1 = Real(1.0)/(Real(2.0) * gamma);
+                Real tmp2 = Real(2.0) * (gamma - Real(1.0));
+                Real tmp2_p = tmp2* E1P + E2P + E3P;
+                Real tmp2_m = tmp2* E1M + E2M + E3M;
+                
+                for (int n=0; n<nspec; ++n) {
+                    Real tmp0 = rhoi(i,j,k,n)*tmp1;
+                    fp_spec(i,j,k,n) = tmp0 * tmp2_p;
+                    fm_spec(i,j,k,n) = tmp0 * tmp2_m;
+                }
             });
 
             ParallelFor(xflxbx, ncomp,
@@ -240,15 +261,36 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             ParallelFor(bxg,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                flux_split_y(i,j,k,fp,fm,q,sfab);
+                flux_split_y(i,j,k,fp,fm,q,sfab,*lparm);
             });
-            ParallelFor(bxg, nspec,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            ParallelFor(bxg,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 Real un = q(i,j,k,QV);
                 Real c = q(i,j,k,QC);
-                fp_spec(i,j,k,n) = Real(0.5)*(un+amrex::Math::abs(un)+c)*rhoi(i,j,k,n);
-                fm_spec(i,j,k,n) = Real(0.5)*(un-amrex::Math::abs(un)-c)*rhoi(i,j,k,n);
+                Real gamma = q(i,j,k,QGAMA);
+
+                Real E1 = un;
+                Real E2 = un - c;
+                Real E3 = un + c;
+                Real E1P = (E1 + amrex::Math::abs(E1)) * Real(0.5);
+                Real E2P = (E2 + amrex::Math::abs(E2)) * Real(0.5);
+                Real E3P = (E3 + amrex::Math::abs(E3)) * Real(0.5);
+
+                Real E1M = E1 - E1P;
+                Real E2M = E2 - E2P;
+                Real E3M = E3 - E3P;
+
+                Real tmp1 = Real(1.0)/(Real(2.0) * gamma);
+                Real tmp2 = Real(2.0) * (gamma - Real(1.0));
+                Real tmp2_p = tmp2* E1P + E2P + E3P;
+                Real tmp2_m = tmp2* E1M + E2M + E3M;
+                
+                for (int n=0; n<nspec; ++n) {
+                    Real tmp0 = rhoi(i,j,k,n)*tmp1;
+                    fp_spec(i,j,k,n) = tmp0 * tmp2_p;
+                    fm_spec(i,j,k,n) = tmp0 * tmp2_m;
+                }
             });
 
             ParallelFor(yflxbx, ncomp,
@@ -282,15 +324,36 @@ void EBR::compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, am
             ParallelFor(bxg,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
-                flux_split_z(i,j,k,fp,fm,q,sfab);
+                flux_split_z(i,j,k,fp,fm,q,sfab,*lparm);
             });
-            ParallelFor(bxg, nspec,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+            ParallelFor(bxg,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
             {
                 Real un = q(i,j,k,QW);
                 Real c = q(i,j,k,QC);
-                fp_spec(i,j,k,n) = Real(0.5)*(un+amrex::Math::abs(un)+c)*rhoi(i,j,k,n);
-                fm_spec(i,j,k,n) = Real(0.5)*(un-amrex::Math::abs(un)-c)*rhoi(i,j,k,n);
+                Real gamma = q(i,j,k,QGAMA);
+
+                Real E1 = un;
+                Real E2 = un - c;
+                Real E3 = un + c;
+                Real E1P = (E1 + amrex::Math::abs(E1)) * Real(0.5);
+                Real E2P = (E2 + amrex::Math::abs(E2)) * Real(0.5);
+                Real E3P = (E3 + amrex::Math::abs(E3)) * Real(0.5);
+
+                Real E1M = E1 - E1P;
+                Real E2M = E2 - E2P;
+                Real E3M = E3 - E3P;
+
+                Real tmp1 = Real(1.0)/(Real(2.0) * gamma);
+                Real tmp2 = Real(2.0) * (gamma - Real(1.0));
+                Real tmp2_p = tmp2* E1P + E2P + E3P;
+                Real tmp2_m = tmp2* E1M + E2M + E3M;
+                
+                for (int n=0; n<nspec; ++n) {
+                    Real tmp0 = rhoi(i,j,k,n)*tmp1;
+                    fp_spec(i,j,k,n) = tmp0 * tmp2_p;
+                    fm_spec(i,j,k,n) = tmp0 * tmp2_m;
+                }
             });
 
             ParallelFor(zflxbx, ncomp,
