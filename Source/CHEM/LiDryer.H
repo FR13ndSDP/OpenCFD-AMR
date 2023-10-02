@@ -26,7 +26,7 @@ void CKRHOY(Real P, Real T, const Real *y, Real &rho, Parm const& parm) noexcept
   for (int i = 0; i < NSPECS; ++i) {
     tmp[i] = y[i] / parm.mw[i];
   }
-  for (Real i = 0; i<NSPECS; ++i) {
+  for (int i = 0; i<NSPECS; ++i) {
     YOW += tmp[i];
   }
 
@@ -42,7 +42,7 @@ void CKYTX(const Real *y, Real *x, Parm const& parm) noexcept {
   for (int i = 0; i < NSPECS; i++) {
     tmp[i] = y[i] / parm.mw[i];
   }
-  for (Real i = 0; i<NSPECS; ++i) {
+  for (int i = 0; i<NSPECS; ++i) {
     YOW += tmp[i];
   }
 
