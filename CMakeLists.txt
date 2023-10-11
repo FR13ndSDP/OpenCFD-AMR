@@ -11,7 +11,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Util/CMake")
 #
 set(EBAMR_DIM             "3"        CACHE STRING "Number of physical dimensions")
 set(EBAMR_PRECISION       "DOUBLE"   CACHE STRING "Floating point precision SINGLE or DOUBLE")
-set(EBAMR_CASE            "7_JET"    CACHE STRING "Case folder")
+set(EBAMR_CASE            "10_TEST"    CACHE STRING "Case folder")
 
 #
 # Physics options

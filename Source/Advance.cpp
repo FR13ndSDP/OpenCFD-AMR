@@ -358,10 +358,6 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                                 fine->CrseAdd(mfi, {&flux[0], &flux[1], &flux[2]}, dx, dt, RunOn::Device);
                         }
                     }
-#ifdef AMREX_USE_GPU
-                    // sync here to avoid out of if loop synchronize
-                    Gpu::streamSynchronize();
-#endif
                 }
                 else
                 {
@@ -374,9 +370,6 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     int as_fine = (current != nullptr);
                     int as_crse = (fine != nullptr);
 
-                    Array4<Real const> const&    s_arr =    S.array(mfi);
-                    Array4<Real      > const& dsdt_arr = dSdt.array(mfi);
-
                     Array4<Real const> vf_arr = (*volfrac).array(mfi);
                     Array4<Real const> bcent_arr = (*bndrycent).array(mfi);
 
@@ -387,7 +380,7 @@ void EBR::compute_dSdt(const amrex::MultiFab &S, amrex::MultiFab &dSdt, amrex::R
                     Array4<Real const> const& fcy = facecent[1]->const_array(mfi);
                     Array4<Real const> const& fcz = facecent[2]->const_array(mfi);
 
-                    eb_compute_dSdt_box(bx, s_arr, dsdt_arr, 
+                    eb_compute_dSdt_box(bx, sfab, dsdtfab, 
                                        {&flux[0],&flux[1],&flux[2]}, 
                                         flags.const_array(mfi), vf_arr,
                                         apx, apy, apz, fcx, fcy, fcz, bcent_arr,

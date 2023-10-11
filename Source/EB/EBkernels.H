@@ -16,10 +16,10 @@ void eb_recon_x(int i, int j, int k, int n,
                 amrex::Array4<amrex::Real const> const &q,
                 amrex::Array4<amrex::EBCellFlag const> const &flag,
                 Parm const &parm) noexcept {
+  ql(i, j, k, n) = q(i - 1, j, k, n);
+  qr(i, j, k, n) = q(i, j, k, n);
   if (flag(i,j,k).isConnected(-1,0,0)) {
-    ql(i, j, k, n) = q(i - 1, j, k, n);
-    qr(i, j, k, n) = q(i, j, k, n);
-    if (flag(i-1, j, k).isConnected(-1, 0, 0)) {
+    if (flag(i, j, k).isConnected(-2, 0, 0)) {
       ql(i,j,k,n) = q(i-1,j,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i-1,j,k,n), q(i-1,j,k,n)-q(i-2,j,k,n));
     }
     if (flag(i,j,k).isConnected(1,0,0)) {
@@ -37,10 +37,10 @@ void eb_recon_y(int i, int j, int k, int n,
                 amrex::Array4<amrex::Real const> const &q,
                 amrex::Array4<amrex::EBCellFlag const> const &flag,
                 Parm const &parm) noexcept {
+  ql(i, j, k, n) = q(i, j-1, k, n);
+  qr(i, j, k, n) = q(i, j, k, n);
   if (flag(i,j,k).isConnected(0,-1,0)) {
-    ql(i, j, k, n) = q(i, j-1, k, n);
-    qr(i, j, k, n) = q(i, j, k, n);
-    if (flag(i, j-1, k).isConnected(0, -1, 0)) {
+    if (flag(i, j, k).isConnected(0, -2, 0)) {
       ql(i,j,k,n) = q(i,j-1,k,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j-1,k,n), q(i,j-1,k,n)-q(i,j-2,k,n));
     }
     if (flag(i,j,k).isConnected(0,1,0)) {
@@ -58,10 +58,10 @@ void eb_recon_z(int i, int j, int k, int n,
                 amrex::Array4<amrex::Real const> const &q,
                 amrex::Array4<amrex::EBCellFlag const> const &flag,
                 Parm const &parm) noexcept {
+  ql(i, j, k, n) = q(i, j, k-1, n);
+  qr(i, j, k, n) = q(i, j, k, n);
   if (flag(i,j,k).isConnected(0,0,-1)) {
-    ql(i, j, k, n) = q(i, j, k-1, n);
-    qr(i, j, k, n) = q(i, j, k, n);
-    if (flag(i, j, k-1).isConnected(0, 0, -1)) {
+    if (flag(i, j, k).isConnected(0, 0, -2)) {
       ql(i,j,k,n) = q(i,j,k-1,n) + amrex::Real(0.5)*minmod(q(i,j,k,n)-q(i,j,k-1,n), q(i,j,k-1,n)-q(i,j,k-2,n));
     }
     if (flag(i,j,k).isConnected(0,0,1)) {
@@ -84,7 +84,7 @@ eb_flux (int i, int j, int k,
 
   Real dl,ul,vl,wl,pl;
   Real dr,ur,vr,wr,pr;
-  GpuArray<Real, NCONS> fp, fm;
+  GpuArray<Real, NCONS> fp={0}, fm={0};
   dl=ql(i,j,k,QRHO); 
   ul=ql(i,j,k,QU); 
   vl=ql(i,j,k,QV);
@@ -95,6 +95,12 @@ eb_flux (int i, int j, int k,
   vr=qr(i,j,k,QV);
   wr=qr(i,j,k,QW); 
   pr=amrex::max(qr(i,j,k,QPRES), parm.smallp);
+
+#ifndef CHEM
+  Real gamma = parm.eos_gamma;
+#else
+  Real gamma = 0.5*(ql(i,j,k,QGAMA)+qr(i,j,k,QGAMA));
+#endif
 
   Real cL = ql(i,j,k,QC);
   Real cR = qr(i,j,k,QC);
@@ -127,42 +133,28 @@ eb_flux (int i, int j, int k,
 		fp[1] = dl*UL*ul + nx * pl;
 		fp[2] = dl*UL*vl + ny * pl;
 		fp[3] = dl*UL*wl + nz * pl;
-		fp[4] = UL*(parm.eos_gamma*pl / (parm.eos_gamma - 1.0) + 0.5*dl*(ul*ul + vl*vl + wl*wl));
+		fp[4] = UL*(gamma*pl / (gamma - 1.0) + 0.5*dl*(ul*ul + vl*vl + wl*wl));
 	}
 	else if (amrex::Math::abs(ML)<1.0) {
 		Real Mp = 0.250*(1.0 + ML)*(1.0 + ML);
 		Real tmp0 = dl*cL*Mp;
 		fp[0] = tmp0;
-		fp[1] = tmp0*(nx*(-UL+2.0*cL)/parm.eos_gamma + ul);
-		fp[2] = tmp0*(ny*(-UL+2.0*cL)/parm.eos_gamma + vl);
-		fp[3] = tmp0*(nz*(-UL+2.0*cL)/parm.eos_gamma + wl);
-		fp[4] = tmp0*( ((parm.eos_gamma-1)*UL+2*cL) * ((parm.eos_gamma-1)*UL+2*cL)/(2*(parm.eos_gamma*parm.eos_gamma-1))
+		fp[1] = tmp0*(nx*(-UL+2.0*cL)/gamma + ul);
+		fp[2] = tmp0*(ny*(-UL+2.0*cL)/gamma + vl);
+		fp[3] = tmp0*(nz*(-UL+2.0*cL)/gamma + wl);
+		fp[4] = tmp0*( ((gamma-1)*UL+2*cL) * ((gamma-1)*UL+2*cL)/(2*(gamma*gamma-1))
                   + (ul*ul + vl*vl + wl*wl - UL*UL)/2
     );
 	}
-	else if (ML <= -1.0) {
-    fp[0] = 0.0;
-		fp[1] = 0.0;
-		fp[2] = 0.0;
-		fp[3] = 0.0;
-		fp[4] = 0.0;
-	}
 
-	if (MR >= 1.0) {
-    fm[0] = 0.0;
-		fm[1] = 0.0;
-		fm[2] = 0.0;
-		fm[3] = 0.0;
-		fm[4] = 0.0;
-	}
-	else if (amrex::Math::abs(MR) < 1.0) {
+	if (amrex::Math::abs(MR) < 1.0) {
 		Real Mm = -0.250*(MR - 1.0) * (MR - 1.0);
 		Real tmp0 = dr*cR*Mm;
 		fm[0] = tmp0;
-		fm[1] = tmp0*(nx*(-UR-2.0*cR)/parm.eos_gamma + ur);
-		fm[2] = tmp0*(ny*(-UR-2.0*cR)/parm.eos_gamma + vr);
-		fm[3] = tmp0*(nz*(-UR-2.0*cR)/parm.eos_gamma + wr);
-		fm[4] = tmp0*( ((parm.eos_gamma-1)*UR-2*cR) * ((parm.eos_gamma-1)*UR-2*cR)/(2*(parm.eos_gamma*parm.eos_gamma-1))
+		fm[1] = tmp0*(nx*(-UR-2.0*cR)/gamma + ur);
+		fm[2] = tmp0*(ny*(-UR-2.0*cR)/gamma + vr);
+		fm[3] = tmp0*(nz*(-UR-2.0*cR)/gamma + wr);
+		fm[4] = tmp0*( ((gamma-1)*UR-2*cR) * ((gamma-1)*UR-2*cR)/(2*(gamma*gamma-1))
                   + (ur*ur + vr*vr + wr*wr - UR*UR)/2
     );
 	}
@@ -171,146 +163,11 @@ eb_flux (int i, int j, int k,
 		fm[1] = dr*UR*ur + nx * pr;
 		fm[2] = dr*UR*vr + ny * pr;
 		fm[3] = dr*UR*wr + nz * pr;
-		fm[4] = UR*(parm.eos_gamma*pr / (parm.eos_gamma - 1.0) + 0.5*dr*(ur*ur + vr*vr + wr*wr));
+		fm[4] = UR*(gamma*pr / (gamma - 1.0) + 0.5*dr*(ur*ur + vr*vr + wr*wr));
 	}
 	for (int n = 0; n < NCONS; ++n) {
 		flxfab(i,j,k,n) = fp[n] + fm[n];
 	}
-}
-
-AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void
-riemann (const amrex::Real gamma, const amrex::Real smallp, const amrex::Real /*smallr*/,
-         const amrex::Real rl, const amrex::Real ul, const amrex::Real pl,
-         const amrex::Real ut1l, const amrex::Real ut2l,
-         const amrex::Real rr, const amrex::Real ur, const amrex::Real pr,
-         const amrex::Real ut1r, const amrex::Real ut2r,
-         amrex::Real& flxrho, amrex::Real& flxu, amrex::Real& flxut,
-#if (AMREX_SPACEDIM == 3)
-         amrex::Real& flxutt,
-#endif
-         amrex::Real& flxe) noexcept
-{
-    using amrex::Real;
-
-    constexpr Real weakwv = Real(1.e-3);
-    constexpr Real small = Real(1.e-6);
-
-    Real clsql = gamma*pl*rl;
-    Real clsqr = gamma*pr*rr;
-    Real wl = std::sqrt(clsql);
-    Real wr = std::sqrt(clsqr);
-    Real cleft = wl/rl;
-    Real cright = wr/rr;
-    Real ccsmall = small*(cleft+cright);
-
-    Real pstar = (wl*pr + wr*pl - wr*wl*(ur-ul))/(wl+wr);
-    pstar = amrex::max(pstar,smallp);
-    Real pstnm1 = pstar;
-
-    Real wlsq = (Real(0.5)*(gamma-Real(1.))*(pstar+pl)+pstar)*rl;
-    Real wrsq = (Real(0.5)*(gamma-Real(1.))*(pstar+pr)+pstar)*rr;
-
-    wl = std::sqrt(wlsq);
-    wr = std::sqrt(wrsq);
-    Real ustarp = ul - (pstar-pl)/wl;
-    Real ustarm = ur + (pstar-pr)/wr;
-
-    pstar = (wl*pr + wr*pl - wr*wl*(ur-ul))/(wl+wr);
-    pstar = amrex::max(pstar,smallp);
-
-    Real ustar;
-    for (int iter = 0; iter < 3; ++iter)
-    {
-        wlsq = (Real(0.5)*(gamma-Real(1.))*(pstar+pl)+pstar)*rl;
-        wrsq = (Real(0.5)*(gamma-Real(1.))*(pstar+pr)+pstar)*rr;
-
-        wl = Real(1.)/std::sqrt(wlsq);
-        wr = Real(1.)/std::sqrt(wrsq);
-
-        Real ustnm1 = ustarm;
-        Real ustnp1 = ustarp;
-
-        ustarm = ur - (pr - pstar)*wr;
-        ustarp = ul + (pl - pstar)*wl;
-
-        Real dpditer = std::abs(pstnm1-pstar);
-        Real zp = std::abs(ustarp-ustnp1);
-        if (zp-weakwv*cleft < Real(0.0) ) {
-            zp = dpditer*wl;
-        }
-        Real zm = std::abs(ustarm-ustnm1);
-        if (zm-weakwv*cright < Real(0.0) ) {
-            zm = dpditer*wr;
-        }
-
-        Real zz = zp+zm;
-        Real denom = dpditer/ amrex::max(zz,ccsmall);
-        pstnm1 = pstar;
-        pstar = pstar - denom*(ustarm-ustarp);
-        pstar = amrex::max(pstar,smallp);
-        ustar = Real(0.5)*(ustarm+ustarp);
-    }
-
-    Real ro, uo, po, sgnm, utrans1;
-    Real utrans2;
-    if (ustar > Real(0.)) {
-        ro = rl;
-        uo = ul;
-        po = pl;
-        sgnm = Real(1.);
-        utrans1 = ut1l;
-        utrans2 = ut2l;
-    } else if (ustar < Real(0.)) {
-        ro = rr;
-        uo = ur;
-        po = pr;
-        sgnm = Real(-1.);
-        utrans1 = ut1r;
-        utrans2 = ut2r;
-    } else {
-        uo = Real(0.5)*(ur+ul);
-        po = Real(0.5)*(pr+pl);
-        ro = Real(2.)*(rl*rr)/(rl+rr);
-        sgnm = Real(1.);
-        utrans1 = Real(0.5)*(ut1l+ut1r);
-        utrans2 = Real(0.5)*(ut2l+ut2r);
-    }
-    Real wosq = (Real(0.5)*(gamma-Real(1.))*(pstar+po)+pstar)*ro;
-    Real co = std::sqrt(gamma * po / ro);
-    Real wo = std::sqrt(wosq);
-    Real dpjmp = pstar-po;
-    Real rstar = ro/(Real(1.)-ro*dpjmp/wosq);
-    Real cstar = std::sqrt(gamma * pstar / rstar);
-    Real spout = co-sgnm*uo;
-    Real spin = cstar - sgnm*uo;
-    if(pstar >= po) {
-        spin = wo/ro-sgnm*uo;
-        spout = spin;
-    }
-    Real ss = amrex::max(spout-spin, spout+spin);
-    Real frac = Real(0.5)*(Real(1.)+(spin+spout)/amrex::max(ss,ccsmall));
-
-    Real rgdnv, ugdnv, pgdnv;
-    if (spout < Real(0.)) {
-        rgdnv = ro;
-        ugdnv = uo;
-        pgdnv = po;
-    } else if(spin >= Real(0.)) {
-        rgdnv = rstar;
-        ugdnv = ustar;
-        pgdnv = pstar;
-    } else {
-        rgdnv = frac*rstar + (Real(1.) - frac)* ro;
-        ugdnv = frac*ustar + (Real(1.) - frac)* uo;
-        pgdnv = frac*pstar + (Real(1.) - frac)* po;
-    }
-
-    flxrho = rgdnv*ugdnv;
-    flxu = rgdnv*ugdnv*ugdnv+pgdnv;
-    flxut = rgdnv*ugdnv*utrans1;
-    flxutt = rgdnv*ugdnv*utrans2;
-    flxe = ugdnv*(Real(0.5)*rgdnv*(ugdnv*ugdnv+utrans1*utrans1+utrans2*utrans2) + pgdnv/(gamma -Real(1.)) + pgdnv);
 }
 
 AMREX_GPU_DEVICE
@@ -332,7 +189,12 @@ void eb_wallflux(GpuArray<Real, NPRIM> const &qw,
   Real un = u*(axm-axp) + v*(aym-ayp) + w*(azm-azp);
   Real lambda0 = amrex::Math::abs(un) + c*apnorm;
 
-  Real E0=p/(parm.eos_gamma-1)+0.50*d*(u*u + v*v + w*w);
+#ifndef CHEM
+  Real gamma = parm.eos_gamma;
+#else
+  Real gamma = qw[QGAMA];
+#endif
+  Real E0=p/(gamma-1)+0.50*d*(u*u + v*v + w*w);
   
   fp[0]=0.5*(d*un+lambda0*d);
   fp[1]=0.5*(d*u*un+(axm-axp)*p + lambda0*d*u);
@@ -392,6 +254,7 @@ void eb_compute_div_visc(
       qw[n] = q(i,j,k,n);
     }
 
+    //TODO: Here is hyp wallflux, Still need diff wallflux
     eb_wallflux(qw, apx(i,j,k),apx(i+1,j,k),apy(i,j,k),apy(i,j+1,k),apz(i,j,k),apz(i,j,k+1),flux_wall,parm);
     // Here we assume dx == dy == dz
     for (int n=0; n<NCONS; ++n) {

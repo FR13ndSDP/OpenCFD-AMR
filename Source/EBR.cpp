@@ -326,6 +326,7 @@ EBR::post_timestep (int iteration)
 #endif
     }
 
+// TODO: mass conservation need varification
 #ifdef CHEM
     // rescaling di for all levels
     for (MFIter mfi(Spec_crse, TilingIfNotGPU()); mfi.isValid(); ++mfi)

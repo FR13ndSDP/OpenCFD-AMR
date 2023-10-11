@@ -120,7 +120,7 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real  dvdz = (0.5*dxinv[2]) * ((q(i,j  ,khip,QV)-q(i,j  ,khim,QV))*whi
                                   +(q(i,j-1,klop,QV)-q(i,j-1,klom,QV))*wlo);
     Real  dwdz = (0.5*dxinv[2]) * ((q(i,j  ,khip,QW)-q(i,j  ,khim,QW))*whi
-                                  +(q(i,j-1,klop,QW)-q(i,j-1,klom,QW))*wlo) ;
+                                  +(q(i,j-1,klop,QW)-q(i,j-1,klom,QW))*wlo);
     Real  divu = dudx + dvdy + dwdz;
     Real  tauyy = muf*(2.0*dvdy-parm.twoThirds*divu);
     Real  tauxy = muf*(dudy+dvdx);
@@ -171,9 +171,9 @@ amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dxinv,
     Real   whi = weights[ihip-ihim];
     Real   wlo = weights[ilop-ilom];
     Real   dudx = (0.5*dxinv[0]) * ((q(ihip,j,k  ,QU)-q(ihim,j,k  ,QU))*whi
-                                   +(q(ilop,j,k-1,QU)-q(ilom,j,k-1,QU))*wlo) ;
+                                   +(q(ilop,j,k-1,QU)-q(ilom,j,k-1,QU))*wlo);
      Real  dwdx = (0.5*dxinv[0]) * ((q(ihip,j,k  ,QW)-q(ihim,j,k  ,QW))*whi
-                                   +(q(ilop,j,k-1,QW)-q(ilom,j,k-1,QW))*wlo) ;
+                                   +(q(ilop,j,k-1,QW)-q(ilom,j,k-1,QW))*wlo);
 
 
     int  jhip = j + (flag(i,j,k  ).isConnected(0, 1,0) ? 1 : 0 );

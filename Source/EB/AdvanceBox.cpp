@@ -222,10 +222,6 @@ EBR::eb_compute_dSdt_box (const Box& bx,
             dsdt_arr(i,j,k,irhoE) += g * s_arr(i,j,k,imz);
         });
     }
-
-#ifdef AMREX_USE_GPU
-    Gpu::streamSynchronize();
-#endif
 }
 
 // TODO: implement state redistribution

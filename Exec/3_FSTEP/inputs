@@ -53,7 +53,7 @@ ebr.do_visc = false
 
 # EB parameters
 ebr.do_redistribute = false
-ebr.small_volfrac = 1e-10
+eb2.small_volfrac = 1e-10
 eb2.geom_type = box
 eb2.box_lo = 0.6 -1.0 -1.0
 eb2.box_hi = 4.0 0.2  1.0

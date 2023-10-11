@@ -139,6 +139,28 @@ protected:
   void compute_dSdt_multi(const amrex::MultiFab &S, amrex::MultiFab &Spec, amrex::MultiFab &dSdt, amrex::MultiFab &dSdt_spec,
                           amrex::Real dt, amrex::EBFluxRegister *fine, amrex::EBFluxRegister *current, 
                           amrex::EBFluxRegister *fine_spec, amrex::EBFluxRegister *current_spec);
+
+  void ebchem_compute_dSdt_box (const amrex::Box& bx,
+                            Array4<Real const> const& s_arr,
+                            Array4<Real const> const& spec_arr,
+                            Array4<Real      > const& dsdt_arr,
+                            Array4<Real      > const& dsdt_spec_arr,
+                            std::array<FArrayBox*, AMREX_SPACEDIM> const& flux,
+                            std::array<FArrayBox*, AMREX_SPACEDIM> const& flux_spec,
+                            std::array<FArrayBox*, AMREX_SPACEDIM> const& flux_diffuse,
+                            Array4<EBCellFlag const> const& flag,
+                            Array4<Real       const> const& vfrac,
+                            Array4<Real const> const& apx,
+                            Array4<Real const> const& apy,
+                            Array4<Real const> const& apz,
+                            Array4<Real const> const& fcx,
+                            Array4<Real const> const& fcy,
+                            Array4<Real const> const& fcz,
+                            Array4<Real       const> const& bcent,
+                            int as_crse, int as_fine,
+                            Array4<Real     > const& dm_as_fine,
+                            Array4<Real     > const& dm_as_fine_spec,
+                            Real dt);
 #endif
 
   // core function
