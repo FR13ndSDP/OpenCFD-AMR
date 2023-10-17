@@ -128,12 +128,14 @@ EBR::initData ()
     for (MFIter mfi(S_new, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
         const Box& box = mfi.validbox();
+        const Box& bxg = amrex::grow(box,NUM_GROW);
+
         auto sfab = S_new.array(mfi);
 
         const auto& flag_array = flags.const_array(mfi);
         Array4<Real const> vf_arr = (*volfrac).array(mfi);
 
-        amrex::ParallelFor(box,
+        amrex::ParallelFor(bxg,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             // This is in EXE files
