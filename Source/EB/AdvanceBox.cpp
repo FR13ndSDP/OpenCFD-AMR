@@ -193,13 +193,16 @@ EBR::eb_compute_dSdt_box (const Box& bx,
         auto const &lo = bx.smallEnd();
         auto const &hi = bx.bigEnd();
         // Now do redistribution
-        ParallelFor(bx, NCONS,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+        ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            if (vfrac(i,j,k) < 1.0 && vfrac(i,j,k) > 0.0) {
-                flux_redist(i,j,k,n,lo,hi,dsdt_arr,divc_arr,flag, vfrac);
+            // make sure the cell is small
+            if (vfrac(i,j,k) < 0.5 && vfrac(i,j,k) > 0.0) {
+                flux_redist(i,j,k,lo,hi,dsdt_arr,divc_arr,flag, vfrac);
             } else {
-                dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
+                for (int n=0; n<NCONS; ++n) {
+                    dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
+                }
             }
         });
     } else {
