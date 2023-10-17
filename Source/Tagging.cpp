@@ -18,24 +18,28 @@ EBR::errorEst (TagBoxArray& tags, int, int, Real time, int, int)
 
     if (!refine_boxes.empty())
     {
-        const auto problo = geom.ProbLoArray();
-        const auto dx = geom.CellSizeArray();
         const auto n_refine_boxes = int(refine_boxes.size());
-        auto const* boxes = dp_refine_boxes;
-        
-        auto const& tagma = tags.arrays();
-        ParallelFor(tags,
-        [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
-        {
-            RealVect pos {(i+0.5)*dx[0]+problo[0],
-                          (j+0.5)*dx[1]+problo[1],
-                          (k+0.5)*dx[2]+problo[2]};
-            for (int irb = 0; irb < n_refine_boxes; ++irb) {
-                if (boxes[irb].contains(pos)) {
-                    tagma[box_no](i,j,k) = TagBox::SET;
-                }
+
+        // refine boxes is on different levels
+        for (int irb = 0; irb < n_refine_boxes; ++irb) {
+            if (level <= irb) {
+                const auto problo = geom.ProbLoArray();
+                const auto dx = geom.CellSizeArray();
+                auto const* boxes = dp_refine_boxes;
+                
+                auto const& tagma = tags.arrays();
+                ParallelFor(tags,
+                [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
+                {
+                    RealVect pos {(i+0.5)*dx[0]+problo[0],
+                                (j+0.5)*dx[1]+problo[1],
+                                (k+0.5)*dx[2]+problo[2]};
+                    if (boxes[irb].contains(pos)) {
+                        tagma[box_no](i,j,k) = TagBox::SET;
+                    }
+                });
             }
-        });
+        }
         Gpu::streamSynchronize();
     }
 
