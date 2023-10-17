@@ -498,24 +498,28 @@ EBR::ebchem_compute_dSdt_box (const Box& bx,
         });  
     }
 
-    if (do_redistribute) {
-        auto const &lo = bx.smallEnd();
-        auto const &hi = bx.bigEnd();
-        // Now do redistribution
-        ParallelFor(bx, NCONS,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
-        {
-            if (vfrac(i,j,k) < 1.0 && vfrac(i,j,k) > 0.0) {
-                flux_redist(i,j,k,n,lo,hi,dsdt_arr,divc_arr,flag, vfrac);
-            } else {
-                dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
-            }
-        });
-    } else {
-        ParallelFor(bx, NCONS,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
-        {
-            dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
-        });
-    }
+    // TODO: redist for EB-CHEM
+    // if (do_redistribute) {
+    //     auto const &lo = bx.smallEnd();
+    //     auto const &hi = bx.bigEnd();
+    //     // Now do redistribution
+    //     ParallelFor(bx,
+    //     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+    //     {
+    //         // make sure the cell is small
+    //         if (vfrac(i,j,k) < 0.5 && vfrac(i,j,k) > 0.0) {
+    //             flux_redist(i,j,k,lo,hi,dsdt_arr,divc_arr,flag, vfrac);
+    //         } else {
+    //             for (int n=0; n<NCONS; ++n) {
+    //                 dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
+    //             }
+    //         }
+    //     });
+    // } else {
+    //     ParallelFor(bx, NCONS,
+    //     [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+    //     {
+    //         dsdt_arr(i,j,k,n) = divc_arr(i,j,k,n);
+    //     });
+    // }
 }
