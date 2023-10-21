@@ -171,10 +171,11 @@ EBR::initData ()
 
 void EBR::buildMetrics()
 {
+    // TODO: this is critical
     // make sure dx == dy == dz
     const Real* dx = geom.CellSize();
     if (std::abs(dx[0]-dx[1]) > 1.e-12*dx[0] || std::abs(dx[0]-dx[2]) > 1.e-12*dx[0]) {
-        amrex::Abort("CNS: must have dx == dy == dz\n");
+        amrex::Abort("EBR: must have dx == dy == dz\n");
     }
 
     const auto& ebfactory = dynamic_cast<EBFArrayBoxFactory const&>(Factory());
