@@ -24,7 +24,8 @@ struct FillExtDir
         int j = iv[1];
         int k = iv[2];
 
-        // outflow for x+ and y+, see blazek p264
+        // farfield
+        // x+
         if (bc.hi(0) == BCType::ext_dir and i > domain_box.bigEnd(0))
         {
             int nx = domain_box.bigEnd(0);
@@ -39,9 +40,9 @@ struct FillExtDir
             Real p_d = 0.4 * (Eden_d - 0.5*rho_d*(u_d*u_d+v_d*v_d+w_d*w_d));
             Real c_d = sqrt(1.4 * p_d/rho_d);
         
-            Real p_b = inflow_state[4];
-            Real rho_b = rho_d + (p_b - p_d)/(341.176*341.176);
-            Real u_b = u_d + (p_d-p_b)/(inflow_state[0] * 341.176);
+            Real p_b = inflow_state[5];
+            Real rho_b = rho_d + (p_b - p_d)/(c_d * c_d);
+            Real u_b = u_d + (p_d-p_b)/(rho_d * c_d);
             Real v_b = v_d;
             Real w_b = w_d;
 
@@ -50,7 +51,7 @@ struct FillExtDir
             v_d = 2 * v_b - v_d;
             w_d = 2 * w_b - w_d;
             p_d = 2 * p_b - p_d;
-
+            
             dest(i,j,k,dcomp + 0) = rho_d;
             dest(i,j,k,dcomp + 1) = rho_d * u_d;
             dest(i,j,k,dcomp + 2) = rho_d * v_d;
@@ -58,6 +59,7 @@ struct FillExtDir
             dest(i,j,k,dcomp + 4) = p_d/0.4 + 0.5*rho_d*(u_d*u_d+v_d*v_d+w_d*w_d);
         }
 
+        // y+
         if (bc.hi(1) == BCType::ext_dir and j > domain_box.bigEnd(1))
         {
             int ny = domain_box.bigEnd(1);
@@ -70,20 +72,20 @@ struct FillExtDir
             Real v_d = my_d/rho_d;
             Real w_d = mz_d/rho_d;
             Real p_d = 0.4 * (Eden_d - 0.5*rho_d*(u_d*u_d+v_d*v_d+w_d*w_d));
-            Real c_d = sqrt(1.4 * p_d/rho_d);
-        
-            Real p_b = inflow_state[4];
-            Real rho_b = rho_d + (p_b - p_d)/(341.176*341.176);
-            Real u_b = u_d;
-            Real v_b = v_d+ (p_d-p_b)/(inflow_state[0] * 341.176);
-            Real w_b = w_d;
+            Real c_d = std::sqrt(1.4 * p_d/rho_d);
+
+            Real p_b = 0.5*(inflow_state[4] + p_d - rho_d*c_d*(inflow_state[2]-v_d));
+            Real rho_b = inflow_state[0] + (p_b - inflow_state[4])/(c_d*c_d);
+            Real u_b = inflow_state[1];
+            Real v_b = inflow_state[2] - (inflow_state[4]-p_b)/(rho_d * c_d);
+            Real w_b = inflow_state[3];
 
             rho_d = 2 * rho_b - rho_d;
             u_d = 2 * u_b - u_d;
             v_d = 2 * v_b - v_d;
             w_d = 2 * w_b - w_d;
             p_d = 2 * p_b - p_d;
-
+            
             dest(i,j,k,dcomp + 0) = rho_d;
             dest(i,j,k,dcomp + 1) = rho_d * u_d;
             dest(i,j,k,dcomp + 2) = rho_d * v_d;
@@ -91,7 +93,7 @@ struct FillExtDir
             dest(i,j,k,dcomp + 4) = p_d/0.4 + 0.5*rho_d*(u_d*u_d+v_d*v_d+w_d*w_d);
         }
 
-        //subsonic inflow here for x-
+        // x-
         if (bc.lo(0) == BCType::ext_dir and i < domain_box.smallEnd(0))
         {
             Real rho_d = dest(-i, j, k, dcomp+0);
@@ -105,7 +107,7 @@ struct FillExtDir
             Real p_d = 0.4 * (Eden_d - 0.5*rho_d*(u_d*u_d+v_d*v_d+w_d*w_d));
             Real c_d = std::sqrt(1.4 * p_d/rho_d);
 
-            Real p_b = 0.5*(inflow_state[4] + p_d - rho_d*c_d*(v_d - inflow_state[2]));
+            Real p_b = 0.5*(inflow_state[4] + p_d - rho_d*c_d*(u_d - inflow_state[1]));
             Real rho_b = inflow_state[0] + (p_b - inflow_state[4])/(c_d*c_d);
             Real u_b = inflow_state[1]+ (inflow_state[4]-p_b)/(rho_d * c_d);
             Real v_b = inflow_state[2];
@@ -123,7 +125,8 @@ struct FillExtDir
             dest(i,j,k,dcomp + 3) = rho_d * w_d;
             dest(i,j,k,dcomp + 4) = p_d/0.4 + 0.5*rho_d*(u_d*u_d+v_d*v_d+w_d*w_d);
         }
-        //subsonic inflow here for y-
+
+        // y-
         if (bc.lo(1) == BCType::ext_dir and j < domain_box.smallEnd(1))
         {
             Real rho_d = dest(i, -j, k, dcomp+0);

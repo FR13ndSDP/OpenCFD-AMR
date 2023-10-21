@@ -30,9 +30,9 @@ amr.loadbalance_level0_int = 1000
 amr.check_input     = 0       # 
 amr.max_level       = 2       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
-amr.regrid_int      = 10 20 40 80 160 # how often to regrid
-amr.blocking_factor = 32
-amr.max_grid_size   = 64
+amr.regrid_int      = 10 20 40 80 # how often to regrid
+amr.blocking_factor = 16
+amr.max_grid_size   = 128
 amr.n_error_buf     = 0 # number of buffer cells in error est
 amr.grid_eff        = 0.9     # what constitutes an efficient grid
 
@@ -54,19 +54,28 @@ ebr.do_reflux = true
 ebr.time_integration = RK3
 ebr.do_visc = true
 
-# ebr.refine_box_lo_0 = -2 -2 -2
-# ebr.refine_box_hi_0 = 2 2 2
+# ebr.refine_box_lo_0 = -1.7 -0.1 -1
+# ebr.refine_box_hi_0 = -0.9 0.1 1
 
-# ebr.refine_box_lo_1 = -1 -1 -0.1
-# ebr.refine_box_hi_1 = 1 1 0.1
+# ebr.refine_box_lo_1 = -1.7 -0.1 -1
+# ebr.refine_box_hi_1 = -0.9 0.1 1
+
+# ebr.refine_box_lo_2 = -1.7 -0.1 -1
+# ebr.refine_box_hi_2 = -0.9 0.1 1
+
+# ebr.refine_box_lo_3 = -1.7 -0.1 -1
+# ebr.refine_box_hi_3 = -0.9 0.1 1
+
+# ebr.refine_box_lo_4 = -1.7 -0.1 -1
+# ebr.refine_box_hi_4 = -0.9 0.1 1
 
 # EB parameters
 ebr.do_redistribute = true
-eb2.small_volfrac = 1e-6
+eb2.small_volfrac = 1e-15
 eb2.stl_file = 30P30N.stl
-eb2.geom_type = stl
+eb2.geom_type = none
 eb2.stl_scale = 1
-eb2.stl_center = -1 0 0
+eb2.stl_center = -1.5 0 0
 eb2.cover_multiple_cuts = 1
 # eb2.box_lo = 0.6 -1.0 -1.0
 # eb2.box_hi = 4.0 0.2  1.0

@@ -13,12 +13,13 @@ extern "C" {
     {
         amrex::ParmParse pp("prob");
 
-        Gpu::HostVector<Real> inflow_state(NCONS);
+        Gpu::HostVector<Real> inflow_state(6);
         inflow_state[0] = EBR::h_prob_parm->rho;
         inflow_state[1] = EBR::h_prob_parm->u;
         inflow_state[2] = EBR::h_prob_parm->v;
         inflow_state[3] = 0;
         inflow_state[4] = EBR::h_prob_parm->p_static;
+        inflow_state[5] = EBR::h_prob_parm->p_out;
 
 #ifdef AMREX_USE_GPU
         // Cannot use Gpu::copy because ProbParm is not trivailly copyable.
@@ -28,7 +29,7 @@ extern "C" {
 #endif
 
         Gpu::copyAsync(Gpu::hostToDevice, inflow_state.data(),
-                       inflow_state.data() + NCONS,
+                       inflow_state.data() + 6,
                        EBR::h_prob_parm->inflow_state);
         Gpu::streamSynchronize();
     }
