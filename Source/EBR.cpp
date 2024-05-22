@@ -53,12 +53,6 @@ EBR::EBR (Amr&            papa,
                         dm, papa.DistributionMap(level-1),
                         level_geom, papa.Geom(level-1),
                         papa.refRatio(level-1), level, NUM_STATE);
-#ifdef CHEM
-        flux_reg_spec.define(bl, papa.boxArray(level-1),
-                        dm, papa.DistributionMap(level-1),
-                        level_geom, papa.Geom(level-1),
-                        papa.refRatio(level-1), level, NSPECS);
-#endif
     }
 
     buildMetrics();
@@ -83,11 +77,6 @@ EBR::init (AmrLevel& old)
 
     MultiFab& C_new = get_new_data(Cost_Type);
     FillPatch(old,C_new,0,cur_time,Cost_Type,0,1);
-
-#ifdef CHEM
-    MultiFab& Spec_new = get_new_data(Spec_Type);
-    FillPatch(old,Spec_new,0,cur_time,Spec_Type,0,NSPECS);
-#endif
 }
 
 void
@@ -101,11 +90,6 @@ EBR::init ()
 
     MultiFab& S_new = get_new_data(State_Type);
     FillCoarsePatch(S_new, 0, cur_time, State_Type, 0, NUM_STATE);
-
-#ifdef CHEM
-    MultiFab& Spec_new = get_new_data(Spec_Type);
-    FillCoarsePatch(Spec_new,0,cur_time,Spec_Type,0,NSPECS);
-#endif
 }
 
 void
@@ -145,23 +129,6 @@ EBR::initData ()
 
     MultiFab& C_new = get_new_data(Cost_Type);
     C_new.setVal(1.0);
-
-#ifdef CHEM
-    MultiFab& Spec_new = get_new_data(Spec_Type);
-
-    for (MFIter mfi(Spec_new, TilingIfNotGPU()); mfi.isValid(); ++mfi)
-    {
-        const Box& box = mfi.validbox();
-        auto sfab = Spec_new.array(mfi);
-        auto sfab_state = S_new.array(mfi);
-
-        amrex::ParallelFor(box,
-        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            ebr_initspec(i, j, k, sfab_state, sfab, geomdata, *lparm);
-        });
-    }
-#endif
 #ifdef AMREX_USE_HDF5
     if (IO_HDF5) {
         writeHDF5PlotFile(0, 0.0);
@@ -316,45 +283,12 @@ EBR::post_timestep (int iteration)
     BL_PROFILE("EBR::post_timestep");
 
     MultiFab& S_crse = get_new_data(State_Type);
-#ifdef CHEM
-    MultiFab& Spec_crse = get_new_data(Spec_Type);
-#endif
+
     if (do_reflux && level < parent->finestLevel()) {
         EBR& fine_level = getLevel(level+1);
         MultiFab& S_fine = fine_level.get_new_data(State_Type);
         fine_level.flux_reg.Reflux(S_crse, *volfrac, S_fine, *fine_level.volfrac);
-#ifdef CHEM
-        MultiFab& Spec_fine = fine_level.get_new_data(Spec_Type);
-        fine_level.flux_reg_spec.Reflux(Spec_crse, *volfrac, Spec_fine, *fine_level.volfrac);
-#endif
     }
-
-// TODO: mass conservation need varification
-#ifdef CHEM
-    // rescaling di for all levels
-    for (MFIter mfi(Spec_crse, TilingIfNotGPU()); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.tilebox();
-        auto const& rhoi = Spec_crse.array(mfi);
-        auto const& sfab = S_crse.array(mfi);
-
-        ParallelFor(bx, 
-        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-        {
-            Real rho0 = 0;
-            for (int n=0; n<NSPECS; ++n) {
-                if (rhoi(i,j,k,n) < 0) {
-                    rhoi(i,j,k,n) = Real(0.0);
-                }
-                rho0 += rhoi(i,j,k,n);
-            }
-            Real tmp = sfab(i,j,k,URHO)/rho0;
-            for (int n=0; n<NSPECS; ++n) {
-                rhoi(i,j,k,n) *= tmp;
-            }
-        }); 
-    }
-#endif
 
     if (level < parent->finestLevel()) {
         avgDown();
@@ -405,31 +339,6 @@ EBR::printTotal () const
                                             <<   "      Total energy     is " << tot[4] << "\n";
 #ifdef BL_LAZY
         });
-#endif
-
-#ifdef CHEM
-    const MultiFab& Spec_new = get_new_data(Spec_Type);
-    Array<Real,NSPECS> tot_spec;
-    for (int comp = 0; comp < NSPECS; ++comp) {
-        MultiFab::Copy(mf, Spec_new, comp, 0, 1, 0);
-        tot_spec[comp] = mf.sum(0,true) * geom.ProbSize();
-    }
-#ifdef BL_LAZY
-    Lazy::QueueReduction( [=] () mutable {
-#endif
-            ParallelDescriptor::ReduceRealSum(tot_spec.data(), NSPECS, ParallelDescriptor::IOProcessorNumber());
-            amrex::Print().SetPrecision(17) << "\n[CHEM] Total spec0 is " << tot_spec[0] << "\n"
-                                            <<   "       Total spec1 is " << tot_spec[1] << "\n"
-                                            <<   "       Total spec2 is " << tot_spec[2] << "\n"
-                                            <<   "       Total spec3 is " << tot_spec[3] << "\n"
-                                            <<   "       Total spec4 is " << tot_spec[4] << "\n"
-                                            <<   "       Total spec5 is " << tot_spec[5] << "\n"
-                                            <<   "       Total spec6 is " << tot_spec[6] << "\n"
-                                            <<   "       Total spec7 is " << tot_spec[7] << "\n"
-                                            <<   "       Total spec8 is " << tot_spec[8] << "\n";
-#ifdef BL_LAZY
-        });
-#endif
 #endif
 }
 
@@ -548,14 +457,6 @@ EBR::avgDown ()
     volume.setVal(1.0);
     amrex::EB_average_down(S_fine, S_crse, volume, fine_lev.volFrac(),
                            0, S_fine.nComp(), fine_ratio);
-
-#ifdef CHEM
-    MultiFab& Spec_crse =          get_new_data(Spec_Type);
-    MultiFab& Spec_fine = fine_lev.get_new_data(Spec_Type);
-
-    amrex::EB_average_down(Spec_fine, Spec_crse, volume, fine_lev.volFrac(),
-                           0, Spec_fine.nComp(), fine_ratio);
-#endif
 }
 
 Real EBR::initialTimeStep()

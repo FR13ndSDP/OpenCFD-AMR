@@ -27,39 +27,6 @@ struct Parm
     amrex::Real twoThirds = 2.0/3.0;
     amrex::Real oneSix = 1.0/6.0;
 
-#ifdef CHEM
-    amrex::Real* mw = nullptr;
-
-    amrex::Real* H2_lo = nullptr;
-    amrex::Real* H2_hi = nullptr;
-    amrex::Real* O2_lo = nullptr;
-    amrex::Real* O2_hi = nullptr;
-    amrex::Real* H2O_lo = nullptr;
-    amrex::Real* H2O_hi = nullptr;
-    amrex::Real* H_lo = nullptr;
-    amrex::Real* H_hi = nullptr;
-    amrex::Real* O_lo = nullptr;
-    amrex::Real* O_hi = nullptr;
-    amrex::Real* OH_lo = nullptr;
-    amrex::Real* OH_hi = nullptr;
-    amrex::Real* HO2_lo = nullptr;
-    amrex::Real* HO2_hi = nullptr;
-    amrex::Real* H2O2_lo = nullptr;
-    amrex::Real* H2O2_hi = nullptr;
-    amrex::Real* N2_lo = nullptr;
-    amrex::Real* N2_hi = nullptr;
-
-    amrex::Real* HP = nullptr;
-    amrex::Real* A0 = nullptr;
-
-    amrex::Real* visccoeff = nullptr;
-    amrex::Real* conductcoeff = nullptr;
-    amrex::Real* diffcoeff = nullptr;
-
-    Parm();
-    ~Parm();
-#endif
-
     void Initialize ();
 };
 

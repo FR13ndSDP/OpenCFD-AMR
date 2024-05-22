@@ -91,7 +91,6 @@ set_z_vel_bc(BCRec& bc, const BCRec& phys_bc)
     bc.setHi(2,norm_vel_bc[hi_bc[2]]);
 }
 
-#ifndef CHEM
 void ebr_derpres (const Box& bx, FArrayBox& pfab, int dcomp, int ncomp,
                   const FArrayBox& datfab, const Geometry& /*geomdata*/,
                   Real /*time*/, const int* /*bcrec*/, int /*level*/)
@@ -109,57 +108,6 @@ void ebr_derpres (const Box& bx, FArrayBox& pfab, int dcomp, int ncomp,
                           dat(i,j,k,UMZ)*dat(i,j,k,UMZ)));
     });
 }
-#else 
-void ebr_dertemp (const Box& bx, FArrayBox& tfab, int dcomp, int ncomp,
-                  const FArrayBox& datfab, const Geometry& /*geomdata*/,
-                  Real /*time*/, const int* /*bcrec*/, int /*level*/)
-{
-    amrex::ignore_unused(ncomp);
-    auto const dat = datfab.array();
-    auto       t    = tfab.array();
-    Parm const* lparm = EBR::d_parm;
-
-    amrex::ParallelFor(bx,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-    {
-        Real rhoi[NSPECS], e;
-        for (int n=0; n<NSPECS; ++n) {
-            rhoi[n] = dat(i,j,k,5+n);
-        }
-        e = dat(i,j,k,UEDEN)-0.5/dat(i,j,k,URHO)* \
-                                (dat(i,j,k,UMX)*dat(i,j,k,UMX) + \
-                                 dat(i,j,k,UMY)*dat(i,j,k,UMY) + \
-                                 dat(i,j,k,UMZ)*dat(i,j,k,UMZ));
-        GET_T_GIVEN_EY(e, rhoi, t(i,j,k,dcomp), *lparm);
-    });
-}
-
-void ebr_derpres (const Box& bx, FArrayBox& pfab, int dcomp, int ncomp,
-                  const FArrayBox& datfab, const Geometry& /*geomdata*/,
-                  Real /*time*/, const int* /*bcrec*/, int /*level*/)
-{
-    amrex::ignore_unused(ncomp);
-    auto const dat = datfab.array();
-    auto       p    = pfab.array();
-    Parm const* lparm = EBR::d_parm;
-
-    amrex::ParallelFor(bx,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
-    {
-        Real rhoi[NSPECS], e;
-        Real T;
-        for (int n=0; n<NSPECS; ++n) {
-            rhoi[n] = dat(i,j,k,5+n);
-        }
-        e = dat(i,j,k,UEDEN)-0.5/dat(i,j,k,URHO)* \
-                                (dat(i,j,k,UMX)*dat(i,j,k,UMX) + \
-                                 dat(i,j,k,UMY)*dat(i,j,k,UMY) + \
-                                 dat(i,j,k,UMZ)*dat(i,j,k,UMZ));
-        GET_T_GIVEN_EY(e, rhoi, T, *lparm);
-        CKPY(rhoi, T, p(i,j,k,dcomp), *lparm);
-    });
-}
-#endif
 
 void ebr_dervel (const Box& bx, FArrayBox& velfab, int dcomp, int ncomp,
                   const FArrayBox& datfab, const Geometry& /*geomdata*/,
@@ -224,7 +172,6 @@ EBR::variableSetUp ()
                    {"ux", "uy", "uz"}, ebr_dervel,the_same_box);
     derive_lst.addComponent("velocity",desc_lst,State_Type,Density,1+AMREX_SPACEDIM);
 
-#ifndef CHEM
     derive_lst.add("pressure",IndexType::TheCellType(),1,
                    ebr_derpres,the_same_box);
     derive_lst.addComponent("pressure",desc_lst,State_Type,Density,1);
@@ -232,45 +179,6 @@ EBR::variableSetUp ()
     derive_lst.addComponent("pressure",desc_lst,State_Type,Ymom,1);
     derive_lst.addComponent("pressure",desc_lst,State_Type,Zmom,1);
     derive_lst.addComponent("pressure",desc_lst,State_Type,Eden,1);
-
-#else
-    desc_lst.addDescriptor(Spec_Type, IndexType::TheCellType(),
-                           StateDescriptor::Point, NUM_GROW, NSPECS,
-                         &eb_mf_cell_cons_interp);
-
-    Vector<BCRec>       spec_bcs(NSPECS);
-    Vector<std::string> spec_name = {"d_H2", "d_O2", "d_H2O", "d_H", "d_O", "d_OH", "d_HO2", "d_H2O2", "d_N2"};
-
-    BCRec spec_bc;
-    for (int n=0; n<NSPECS; ++n) {
-        set_scalar_bc(spec_bc,phys_bc); spec_bcs[n] = spec_bc;
-    }
-
-    StateDescriptor::BndryFunc spec_bndryfunc(spec_bcfill);
-    spec_bndryfunc.setRunOnGPU(true);
-
-    desc_lst.setComponent(Spec_Type,
-                          SPEC_START,
-                          spec_name,
-                          spec_bcs,
-                          spec_bndryfunc);
-
-    derive_lst.add("pressure",IndexType::TheCellType(),1, ebr_derpres,the_same_box);
-    derive_lst.addComponent("pressure",desc_lst,State_Type,Density,1);
-    derive_lst.addComponent("pressure",desc_lst,State_Type,Xmom,1);
-    derive_lst.addComponent("pressure",desc_lst,State_Type,Ymom,1);
-    derive_lst.addComponent("pressure",desc_lst,State_Type,Zmom,1);
-    derive_lst.addComponent("pressure",desc_lst,State_Type,Eden,1);
-    derive_lst.addComponent("pressure",desc_lst,Spec_Type,SPEC_START,NSPECS);
-
-    derive_lst.add("T",IndexType::TheCellType(),1, ebr_dertemp,the_same_box);
-    derive_lst.addComponent("T",desc_lst,State_Type,Density,1);
-    derive_lst.addComponent("T",desc_lst,State_Type,Xmom,1);
-    derive_lst.addComponent("T",desc_lst,State_Type,Ymom,1);
-    derive_lst.addComponent("T",desc_lst,State_Type,Zmom,1);
-    derive_lst.addComponent("T",desc_lst,State_Type,Eden,1);
-    derive_lst.addComponent("T",desc_lst,Spec_Type,SPEC_START,NSPECS);
-#endif
 }
 
 void

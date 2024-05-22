@@ -32,17 +32,8 @@ ebr_estdt (amrex::Box const& bx, amrex::Array4<Real const> const& state,
                 Real vx = mx*rhoinv;
                 Real vy = my*rhoinv;
                 Real vz = mz*rhoinv;
-// #ifdef CHEM
-//                 Real p;
-//                 Real T = state(i,j,k,UTemp);
-//                 CKPY(rhoi, T, p);
-//                 Real e = E-0.5_rt*rho*(vx*vx+vy*vy+vz*vz);
-//                 Real gamma = 1.0_rt + p/e;
-//                 Real cs = std::sqrt(gamma*p/rho);
-// #else
                 Real p = amrex::max((parm.eos_gamma-Real(1.0))*(E-Real(0.5)*rho*(vx*vx+vy*vy+vz*vz)), parm.smallp);
                 Real cs = std::sqrt(parm.eos_gamma*p*rhoinv);
-// #endif
                 Real dtx = dx[0]/(std::abs(vx)+cs);
                 Real dty = dx[1]/(std::abs(vy)+cs);
                 Real dtz = dx[2]/(std::abs(vz)+cs);
@@ -50,11 +41,6 @@ ebr_estdt (amrex::Box const& bx, amrex::Array4<Real const> const& state,
             }
         }
     }
-
-    //TODO: fix dt for chem now
-#ifdef CHEM
-    dt = 1e-8;
-#endif
     return dt;
 }
 
@@ -153,25 +139,7 @@ Real EBR::advance(Real time, Real dt, int iteration, int ncycle)
 {
     BL_PROFILE("EBR::advance");
 
-#ifndef CHEM
     flow_advance(time, dt, iteration, ncycle);
-#else
-    int iter = level<=2? 4/int(pow(2,level)):1;
-    Real dt1 = 0.5*dt;
-    Real dt2 = dt1/iter;
-
-    /*
-        Operator splitting: Introduction to Computational Astrophisical Hydrodynamics, Michael Zingale, p213.
-    */
-
-    for (int n=0; n<iter; ++n) {
-        chemical_advance(dt2);
-    }
-    flow_advance_multi(time, dt, iteration, ncycle);
-    for (int n=0; n<iter; ++n) {
-        chemical_advance(dt2);
-    }
-#endif
 
     return dt;
 }

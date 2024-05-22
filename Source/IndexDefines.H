@@ -15,20 +15,8 @@
 #define QPRES  4
 #define QT     5
 #define QC     6
-#ifdef CHEM
-#define QGAMA  7
-#define NPRIM  8
-#else
 #define NPRIM  7
-#endif
 
 #define NTHREADS 256 // not in use
-
-#ifdef CHEM
-#define NSPECS 9
-#define NREACS 19
-#define SPEC_START 0
-#define SPEC_END NSPECS-1
-#endif
 
 #endif

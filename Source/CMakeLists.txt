@@ -19,6 +19,3 @@ target_sources(ebamr
 
 add_subdirectory(kernel)
 add_subdirectory(EB)
-if (OPTION_USE_CHEM)
-    add_subdirectory(CHEM)
-endif ()
