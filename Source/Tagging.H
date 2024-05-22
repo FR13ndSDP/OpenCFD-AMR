@@ -12,7 +12,7 @@ tag_dengrad (int i, int j, int k,
                   amrex::Array4<char> const& tag,
                   amrex::Array4<amrex::Real const> const& rho,
                   amrex::GeometryData const& /*geomdata*/,
-                  amrex::Real dengrad_threshold, char tagval, char /*clearval*/) noexcept
+                  amrex::Real dengrad_threshold, char tagval, char clearval) noexcept
 {
     using amrex::Real;
 
@@ -30,6 +30,8 @@ tag_dengrad (int i, int j, int k,
     az = amrex::max(az,amrex::Math::abs(rho(i,j,k) - rho(i,j,k-1)));
     if ((amrex::max(ax,ay,az) >= dengrad_threshold)) {
         tag(i,j,k) = tagval;
+    } else {
+        tag(i,j,k) = clearval;
     }
 }
 
