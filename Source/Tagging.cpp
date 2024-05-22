@@ -31,9 +31,9 @@ EBR::errorEst (TagBoxArray& tags, int, int, Real time, int, int)
                 ParallelFor(tags,
                 [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k) noexcept
                 {
-                    RealVect pos {(i+0.5)*dx[0]+problo[0],
-                                (j+0.5)*dx[1]+problo[1],
-                                (k+0.5)*dx[2]+problo[2]};
+                    RealVect pos {(i+0.5_rt)*dx[0]+problo[0],
+                                  (j+0.5_rt)*dx[1]+problo[1],
+                                  (k+0.5_rt)*dx[2]+problo[2]};
                     if (boxes[irb].contains(pos)) {
                         tagma[box_no](i,j,k) = TagBox::SET;
                     }
