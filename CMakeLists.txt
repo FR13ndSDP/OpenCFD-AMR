@@ -111,13 +111,6 @@ endif()
 if ( NOT CMAKE_CXX_FLAGS )
   target_link_libraries(ebamr PUBLIC AMReX::Flags_CXX)
 endif ()
-
-if ( OPTION_USE_CHEM )
-   set(CMAKE_CXX_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
-   if ( OPTION_CUDA )
-      set(CMAKE_CUDA_FLAGS "-DCHEM ${CMAKE_CXX_FLAGS}")
-   endif ()
-endif ()
 ########################### AMReX #####################################
 message(STATUS "AMReX Configure Section")
 set(AMREX_SUBMOD_LOCATION "${CMAKE_SOURCE_DIR}/Submodules/amrex")

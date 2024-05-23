@@ -96,11 +96,7 @@ eb_flux (int i, int j, int k,
   wr=qr(i,j,k,QW); 
   pr=amrex::max(qr(i,j,k,QPRES), parm.smallp);
 
-#ifndef CHEM
   Real gamma = parm.eos_gamma;
-#else
-  Real gamma = 0.5*(ql(i,j,k,QGAMA)+qr(i,j,k,QGAMA));
-#endif
 
   Real cL = ql(i,j,k,QC);
   Real cR = qr(i,j,k,QC);
@@ -189,11 +185,7 @@ void eb_wallflux(GpuArray<Real, NPRIM> const &qw,
   Real un = u*(axm-axp) + v*(aym-ayp) + w*(azm-azp);
   Real lambda0 = amrex::Math::abs(un) + c*apnorm;
 
-#ifndef CHEM
   Real gamma = parm.eos_gamma;
-#else
-  Real gamma = qw[QGAMA];
-#endif
   Real E0=p/(gamma-1)+0.50*d*(u*u + v*v + w*w);
   
   fp[0]=0.5*(d*un+lambda0*d);
@@ -350,8 +342,10 @@ void flux_redist(int i, int j, int k, IntVect const &lo, IntVect const &hi,
 
   for (int ii=-1; ii<=1; ++ii) {
     for (int jj=-1; jj<=1; ++jj) {
-      if ( (lo[0] <= i+ii) && (i+ii <= hi[0]) && (lo[1] <= j+jj) && (j+jj <= hi[1]) ) {
-        totfrac += vfrac(i+ii, j+jj, k);
+      if (ii!=0 || jj!= 0) {
+        if ( (lo[0] <= i+ii) && (i+ii <= hi[0]) && (lo[1] <= j+jj) && (j+jj <= hi[1]) ) {
+          totfrac += vfrac(i+ii, j+jj, k);
+        }
       }
     }
   }
@@ -367,8 +361,8 @@ void flux_redist(int i, int j, int k, IntVect const &lo, IntVect const &hi,
   //     if (ii!=0 || jj!= 0) {
   //       if ( (lo[0] <= i+ii) && (i+ii <= hi[0]) && (lo[1] <= j+jj) && (j+jj <= hi[1]) ) {
   //         for (int n=0; n<NCONS; ++n) {
-  //           AMREX_DEVICE_PRINTF("%d,%d,%d, divc=%f, dsdt=%f\n", ii,jj,k, divc_arr(i+ii,j+jj,k,n), dsdt_arr(i+ii,j+jj,k,n))
-  //           // dsdt_arr(i+ii,j+jj,k,n) = divc_arr(i+ii,j+jj,k,n);// + vfrac(i+ii,j+jj,k)*delta_M[n]/(totfrac-vfrac(i,j,k));
+  //           AMREX_DEVICE_PRINTF("%d,%d,%d, frac=%f\n", ii,jj,k, vfrac(i+ii,j+jj,k)/totfrac)
+  //           // dsdt_arr(i+ii,j+jj,k,n) += vfrac(i+ii,j+jj,k)*delta_M[n]/totfrac;
   //         }
   //       }
   //     }

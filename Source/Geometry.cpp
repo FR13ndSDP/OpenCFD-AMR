@@ -24,6 +24,6 @@ initialize_Geom (const Geometry& geom, const int required_coarsening_level,
     else
     {
         // Disable build coarse level by coarsening, which cause problem for complex geometry AMR
-        EB2::Build(geom, max_coarsening_level, max_coarsening_level, 4, false);
+        EB2::Build(geom, max_coarsening_level, max_coarsening_level, 4, true);
     }
 }

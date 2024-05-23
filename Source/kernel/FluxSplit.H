@@ -22,11 +22,7 @@ void flux_split_x(int i, int j, int k,
   Real v = q(i, j, k, QV);
   Real w = q(i, j, k, QW);
   Real c = q(i, j, k, QC);
-#ifndef CHEM
   Real gamma = parm.eos_gamma;
-#else
-  Real gamma = q(i,j,k,QGAMA);
-#endif
 
   Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
   Real tmp2 = Real(2.0) * (gamma - Real(1.0));
@@ -84,11 +80,7 @@ void flux_split_y(int i, int j, int k,
   Real v = q(i, j, k, QV);
   Real w = q(i, j, k, QW);
   Real c = q(i, j, k, QC);
-#ifndef CHEM
   Real gamma = parm.eos_gamma;
-#else
-  Real gamma = q(i,j,k,QGAMA);
-#endif
 
   Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
   Real tmp2 = Real(2.0) * (gamma - Real(1.0));
@@ -145,11 +137,7 @@ void flux_split_z(int i, int j, int k,
   Real v = q(i, j, k, QV);
   Real w = q(i, j, k, QW);
   Real c = q(i, j, k, QC);
-#ifndef CHEM
   Real gamma = parm.eos_gamma;
-#else
-  Real gamma = q(i,j,k,QGAMA);
-#endif
 
   Real tmp1 = Real(1.0) / (Real(2.0) * gamma);
   Real tmp2 = Real(2.0) * (gamma - Real(1.0));
@@ -191,106 +179,4 @@ void flux_split_z(int i, int j, int k,
   fm(i, j, k, UEDEN) =
       tmp0 * (E1M * v2 + E2M * vvc1 + E3M * vvc2 + w2 * (E2M + E3M));
 }
-
-/*
-// Local Lax Friedrichs
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
-void flux_split_x(int i, int j, int k, 
-                  amrex::Array4<amrex::Real> const &fp,
-                  amrex::Array4<amrex::Real> const &fm,
-                  amrex::Array4<amrex::Real const> const &q,
-                  amrex::Array4<amrex::Real const> const &state,
-                  Parm const &parm) noexcept {
-  using amrex::Real;
-  Real d = q(i, j, k, QRHO);
-  Real u = q(i, j, k, QU);
-  Real v = q(i, j, k, QV);
-  Real w = q(i, j, k, QW);
-  Real c = q(i, j, k, QC);
-  Real p = q(i, j, k, QPRES);
-
-  Real un = u;
-  Real lambda0 = amrex::Math::abs(un) + c;
-  Real E0 = state(i,j,k,UEDEN);
-  
-  fp(i, j, k, URHO) = Real(0.5)*(d*un + lambda0*d);
-  fp(i, j, k, UMX) = Real(0.5)*(d*u*un + lambda0*d*u + p);
-  fp(i, j, k, UMY) = Real(0.5)*(d*v*un + lambda0*d*v);
-  fp(i, j, k, UMZ) = Real(0.5)*(d*w*un + lambda0*d*w);
-  fp(i, j, k, UEDEN) = Real(0.5)*((E0+p)*un + lambda0*E0);
-
-  fm(i, j, k, URHO) = Real(0.5)*(d*un - lambda0*d);
-  fm(i, j, k, UMX) = Real(0.5)*(d*u*un - lambda0*d*u + p);
-  fm(i, j, k, UMY) = Real(0.5)*(d*v*un - lambda0*d*v);
-  fm(i, j, k, UMZ) = Real(0.5)*(d*w*un - lambda0*d*w);
-  fm(i, j, k, UEDEN) = Real(0.5)*((E0+p)*un - lambda0*E0);
-}
-
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
-void flux_split_y(int i, int j, int k, 
-                  amrex::Array4<amrex::Real> const &fp,
-                  amrex::Array4<amrex::Real> const &fm,
-                  amrex::Array4<amrex::Real const> const &q,
-                  amrex::Array4<amrex::Real const> const &state,
-                  Parm const &parm) noexcept {
-  using amrex::Real;
-  Real d = q(i, j, k, QRHO);
-  Real u = q(i, j, k, QU);
-  Real v = q(i, j, k, QV);
-  Real w = q(i, j, k, QW);
-  Real c = q(i, j, k, QC);
-  Real p = q(i, j, k, QPRES);
-
-  Real un = v;
-  Real lambda0 = amrex::Math::abs(un) + c;
-  Real E0 = state(i,j,k,UEDEN);
-
-  fp(i, j, k, URHO) = Real(0.5)*(d*un + lambda0*d);
-  fp(i, j, k, UMX) = Real(0.5)*(d*u*un + lambda0*d*u);
-  fp(i, j, k, UMY) = Real(0.5)*(d*v*un + lambda0*d*v + p);
-  fp(i, j, k, UMZ) = Real(0.5)*(d*w*un + lambda0*d*w);
-  fp(i, j, k, UEDEN) = Real(0.5)*((E0+p)*un + lambda0*E0);
-
-  fm(i, j, k, URHO) = Real(0.5)*(d*un - lambda0*d);
-  fm(i, j, k, UMX) = Real(0.5)*(d*u*un - lambda0*d*u);
-  fm(i, j, k, UMY) = Real(0.5)*(d*v*un - lambda0*d*v + p);
-  fm(i, j, k, UMZ) = Real(0.5)*(d*w*un - lambda0*d*w);
-  fm(i, j, k, UEDEN) = Real(0.5)*((E0+p)*un - lambda0*E0);
-}
-
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
-void flux_split_z(int i, int j, int k, 
-                  amrex::Array4<amrex::Real> const &fp,
-                  amrex::Array4<amrex::Real> const &fm,
-                  amrex::Array4<amrex::Real const> const &q,
-                  amrex::Array4<amrex::Real const> const &state,
-                  Parm const &parm) noexcept {
-  using amrex::Real;
-  Real d = q(i, j, k, QRHO);
-  Real u = q(i, j, k, QU);
-  Real v = q(i, j, k, QV);
-  Real w = q(i, j, k, QW);
-  Real c = q(i, j, k, QC);
-  Real p = q(i, j, k, QPRES);
-
-  Real un = w;
-  Real lambda0 = amrex::Math::abs(un) + c;
-  Real E0 = state(i,j,k,UEDEN);
-
-  fp(i, j, k, URHO) = Real(0.5)*(d*un + lambda0*d);
-  fp(i, j, k, UMX) = Real(0.5)*(d*u*un + lambda0*d*u);
-  fp(i, j, k, UMY) = Real(0.5)*(d*v*un + lambda0*d*v);
-  fp(i, j, k, UMZ) = Real(0.5)*(d*w*un + lambda0*d*w + p);
-  fp(i, j, k, UEDEN) = Real(0.5)*((E0+p)*un + lambda0*E0);
-
-  fm(i, j, k, URHO) = Real(0.5)*(d*un - lambda0*d);
-  fm(i, j, k, UMX) = Real(0.5)*(d*u*un - lambda0*d*u);
-  fm(i, j, k, UMY) = Real(0.5)*(d*v*un - lambda0*d*v);
-  fm(i, j, k, UMZ) = Real(0.5)*(d*w*un - lambda0*d*w + p);
-  fm(i, j, k, UEDEN) = Real(0.5)*((E0+p)*un - lambda0*E0);
-}
-*/
 #endif
